@@ -2,7 +2,7 @@
 
 状态：仓库重构已实施，待阿里云公网与双设备验收
 目标平台：Windows 客户端 + 阿里云 Linux 服务端  
-基线：保留 Solo、PVE、本地 Duel、CV Training；当前完整套件为 441 个自动化测试
+基线：保留 Solo、PVE、本地 Duel、CV Training；当前完整套件为 442 个自动化测试
 
 部署决策修订（2026-08-09）：首版使用阿里云 ECS 公网 IPv4 和
 `ws://ECS_PUBLIC_IP:8765` 直连，不把域名、DNS、TLS 或 Caddy 作为上线前置条件。
@@ -431,7 +431,7 @@ OpenCV、MediaPipe 和渲染继续留在主线程，网络线程禁止直接修�
 
 ### 10.1 必须保留的回归测试
 
-- 当前 441 个测试持续通过；
+- 当前 442 个测试持续通过；
 - Solo、PVE、本地 Duel、CV Training 的公开行为不变；
 - keyboard 与 CV 的施法结果仍遵循同一套规则。
 

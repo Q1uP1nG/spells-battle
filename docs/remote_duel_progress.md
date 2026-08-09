@@ -630,3 +630,47 @@ Docker is not installed on the current Windows workstation, so a local
 `docker compose config`/container start could not be performed. Compose structure is
 covered by YAML regression tests; the actual container build, health check, and public
 port check remain part of the ECS deployment gate.
+
+## Pre-deployment audit against the project report
+
+Date: 2026-08-09
+
+The complete 21-page `Spells_Battle_Report.pdf` was reviewed against the current
+repository. The original finger/wand input paths, six spells, characters, PVE, local
+Duel, CV Training, rendering/audio feedback, fallback behavior, and offline tooling
+remain covered. Remote Duel extends those boundaries through session adapters and an
+authoritative headless server; it does not move camera frames, MediaPipe, rendering, or
+audio to the server.
+
+The audit found one release-entry defect: running the documented command
+`python tools/remote_duel_probe.py` directly placed `tools/` instead of the repository
+root on Python's import path. The probe now adds its repository root only for direct
+script execution, and a subprocess regression test protects the documented command.
+
+Verification after the fix:
+
+```text
+python -m unittest tests.test_remote_duel_probe -v
+  Ran 3 tests
+  OK
+
+python tools/remote_duel_probe.py --url ws://127.0.0.1:18765
+  health.status=ok
+  duel.ok=true
+  protocol_version=2
+  full_round=true
+  winner=0
+  elapsed_seconds=9.895
+
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 442 tests in 15.725s
+  OK
+```
+
+The code and deployment artifacts are ready for execution. Remaining gates are
+external: build the container on the purchased ECS, open TCP/8765, run the probe
+against `ws://101.132.63.248:8765`, and complete the report's required manual camera/CV
+and two-physical-device checks.

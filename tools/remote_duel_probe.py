@@ -5,8 +5,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+from pathlib import Path
+import sys
 import time
 import urllib.request
+
+# Direct script execution puts tools/ rather than the repository root on sys.path.
+# Keep the documented ``python tools/remote_duel_probe.py`` command runnable.
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from websockets.asyncio.client import connect
 
