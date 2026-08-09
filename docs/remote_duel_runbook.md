@@ -55,6 +55,16 @@ python -m unittest discover -s tests
 
 网络集成测试在随机本地端口启动真实 WebSocket 服务，覆盖两个客户端、相同快照、完整回合、重复 sequence、心跳、断线暂停、重连和 rematch，不依赖公网、摄像头、音频或 GUI。
 
+部署后可直接运行无摄像头双客户端探针：
+
+```powershell
+python tools/remote_duel_probe.py --url wss://duel.example.com
+```
+
+它会先检查 `/health`，再创建两个真实 WebSocket 客户端，完成建房、加入、
+ready、心跳、连续权威施法、胜负和双方最终快照一致性检查。只想快速检查握手与
+一次施法时可增加 `--quick`。
+
 ## 公网验收清单
 
 部署步骤见 `deploy/README.md`。发布前必须在两台不同网络的 Windows 设备上确认：

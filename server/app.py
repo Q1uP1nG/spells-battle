@@ -75,6 +75,9 @@ class BattleServer:
             self._server = None
 
     async def _handle_connection(self, websocket):
+        if len(self._connections) >= self.config.max_connections:
+            await websocket.close(code=1013, reason="server connection capacity reached")
+            return
         connection = ClientConnection(websocket, queue_limit=self.config.client_send_queue)
         connection.start_writer()
         self._connections[websocket] = connection
@@ -130,11 +133,16 @@ class BattleServer:
     async def _handle_message(self, connection, raw):
         request_id = None
         try:
+            request_time = asyncio.get_running_loop().time()
+            if not connection.allow_request(
+                request_time, self.config.max_messages_per_second
+            ):
+                raise ProtocolError("rate_limited", "too many messages")
             message = decode_message(raw)
             request_id = message["request_id"]
             message_type = message["type"]
             payload = message["payload"]
-            now = asyncio.get_running_loop().time()
+            now = request_time
 
             if message_type == "create_room":
                 self._ensure_unbound(connection)

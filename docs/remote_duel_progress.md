@@ -493,6 +493,39 @@ git diff --check
   PASS
 ```
 
+## Public-deployment preflight hardening
+
+Date: 2026-08-09
+
+- Added configurable total connection and general per-connection message-rate
+  limits, complementing room, cast, message-size, and send-queue limits.
+- Added a deployable headless probe at `tools/remote_duel_probe.py`.
+- The probe validates health, two real WebSocket connections, create/join, ready,
+  heartbeat, authoritative cast acknowledgement, full-round winner calculation, and
+  identical final snapshots.
+- Verified the probe's default full-round path against a random local port: protocol
+  2, winner P1, complete in 9.908 seconds.
+
+Final local gate after these changes:
+
+```text
+python -m unittest discover -s tests
+  Ran 439 tests in 17.914s
+  OK
+
+Real log snapshot before/after the full suite
+  REAL_LOGS_UNCHANGED=True
+
+git diff --check
+  PASS
+```
+
+Once a public endpoint exists, the remaining external acceptance starts with:
+
+```powershell
+python tools/remote_duel_probe.py --url wss://<deployed-domain>
+```
+
 The shared Conda environment's global `pip check` reports unrelated pre-existing
 missing optional dependencies for Azure Identity, EasyOCR, MCP, MSAL, and PDFMiner.
 No project dependency is named by those errors, and the server-specific dependency

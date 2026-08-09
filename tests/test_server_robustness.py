@@ -38,6 +38,14 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(connection._writer_task)
 
+    async def test_general_message_rate_is_bounded_per_connection(self):
+        connection = ClientConnection(FakeWebSocket())
+
+        self.assertTrue(connection.allow_request(1.0, limit=2))
+        self.assertTrue(connection.allow_request(1.1, limit=2))
+        self.assertFalse(connection.allow_request(1.2, limit=2))
+        self.assertTrue(connection.allow_request(2.1, limit=2))
+
 
 class StructuredLoggingTests(unittest.TestCase):
     def test_sensitive_context_is_redacted(self):

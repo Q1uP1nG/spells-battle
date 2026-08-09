@@ -17,6 +17,8 @@ class ServerDeploymentTests(unittest.TestCase):
             ServerConfig(tick_rate=10, snapshot_rate=15)
         with self.assertRaises(ValueError):
             ServerConfig(log_level="VERBOSE")
+        with self.assertRaises(ValueError):
+            ServerConfig(max_connections=1)
 
     def test_server_image_is_headless_and_runs_as_non_root(self):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")

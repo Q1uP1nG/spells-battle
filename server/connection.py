@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
 from dataclasses import dataclass, field
 
 from network.protocol import encode_message
@@ -18,6 +19,7 @@ class ClientConnection:
     queue_limit: int = 64
     _send_queue: asyncio.Queue = field(init=False)
     _writer_task: asyncio.Task | None = field(default=None, init=False)
+    _request_times: deque = field(default_factory=deque, init=False)
 
     def __post_init__(self):
         self._send_queue = asyncio.Queue(maxsize=self.queue_limit)
@@ -40,6 +42,14 @@ class ClientConnection:
         if task is not None:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
+
+    def allow_request(self, now, limit):
+        while self._request_times and now - self._request_times[0] >= 1.0:
+            self._request_times.popleft()
+        if len(self._request_times) >= limit:
+            return False
+        self._request_times.append(float(now))
+        return True
 
     async def _writer(self):
         while True:

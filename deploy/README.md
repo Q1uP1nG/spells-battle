@@ -19,6 +19,12 @@ docker compose ps
 curl https://你的域名/health
 ```
 
+在客户端仓库运行自动公网探针：
+
+```powershell
+python tools/remote_duel_probe.py --url wss://你的域名
+```
+
 Caddy 自动申请并续期 TLS 证书，将 HTTPS/WSS 流量转发给只在 Compose 内网暴露的权威服务。应用容器使用非 root 用户运行，并带有健康检查；两个服务均设置 `unless-stopped` 自动重启与 Docker JSON 日志轮转。
 
 ## 客户端
