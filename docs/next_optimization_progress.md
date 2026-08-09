@@ -2,9 +2,9 @@
 
 实施依据：`docs/next_optimization_plan.md`
 
-当前阶段：Phase 0 已完成，Phase 1 待开始
+当前阶段：Phase 0、Phase 1 已完成，Phase 2 待开始
 
-最近更新：2026-08-09
+最近更新：2026-08-10
 
 ## 概念边界
 
@@ -109,8 +109,89 @@ OK
 - 回退时可恢复旧的两个工具文件并删除 `tools/gesture_corpus.py`；现有模板包未被重写；
 - 当前没有任何候选算法晋升，Shadow/正式边界保持不变。
 
+## Phase 1：Schema v2 与评价体系
+
+### 完成内容
+
+- 新采集日志使用 Schema v2，并为 session 和 sample 生成稳定 ID；
+- 支持匿名 `user_id`、匿名 `device_id`、`input_mode`、分辨率、估计 FPS、
+  `palm_scale`、评价分区、审核状态和分类器版本；
+- 匿名 user/device 标签只能由 `SPELLS_CV_USER_ID` 和 `SPELLS_CV_DEVICE_ID`
+  显式提供，不读取姓名、硬件序列号、摄像头图像或其他设备身份；
+- Mode 4 Bank、人工审核和代表模板包重建流程保留 Schema v2 元数据；
+- 旧 v1 日志继续兼容，缺失字段保持缺失或使用明确的 legacy 标记；
+- 评价器支持 sample leave-one-out、session/user/device grouped CV，并拒绝在
+  元数据不足或分组数不足时伪造 user/device grouped 结果；
+- 派生样本沿用原样本的 group/fold，防止数据泄漏；
+- `development` 与 `locked` 分区隔离，代表模板选择和阈值观察不能读取
+  locked 样本；当前语料尚无 locked 样本，因此不能完成独立锁定评价；
+- 输出 Accuracy、Macro Precision/Recall/F1、每法术指标、拒识率、错误接受率、
+  混淆矩阵、Top-1/Top-2 margin、分类耗时 p50/p95 和输入来源分解；
+- manifest 增加确定性指标指纹，耗时抖动不影响回归指标版本。
+
+### Session-grouped 评价
+
+运行命令：
+
+```powershell
+python tools/evaluate_gesture_templates.py `
+  --bank models/gesture_template_bank.json `
+  --reviewed models/gesture_reviewed_samples.jsonl `
+  --split-mode session_grouped_cv `
+  --folds 5 `
+  --partition development `
+  --baseline-metrics artifacts/cv_evaluation/phase0_baseline_31958d2/metrics.json `
+  --output-dir artifacts/cv_evaluation/phase1_session_grouped_b35783b
+```
+
+语料仍为 77 条 canonical 轨迹，只能形成 8 个 session group，其中 11 条缺失
+可靠来源并统一归入 `legacy` group。五折测试集大小为 27、19、11、10、10；
+各 session 的类别分布高度不平衡。当前没有可靠 user/device 元数据，因此不能
+运行或宣称 user/device grouped 泛化结果。
+
+主要结果：
+
+| 方法 | Accuracy | Macro-F1 | 拒识率 | 错误接受率 | p95 | 解释限制 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| current heuristic | 58.4% | 73.3% | 33.8% | 7.8% | 0.28ms | 当前规则基线 |
+| current template pack | 97.4% | 97.7% | 0.0% | 2.6% | 465.81ms | 同源 Bank 重代入，不是泛化结果 |
+| current fused | 94.8% | 95.0% | 1.3% | 3.9% | 503.86ms | 同源 Bank 回归，且远超 10ms 目标 |
+| session-grouped representative templates | 53.2% | 53.1% | 0.0% | 46.8% | 未采集 | 训练 fold 选代表模板、隔离 session 测试 |
+
+session-grouped 结果按法术为：Glacius 12/12、Incendio 10/28、Lumos 13/14、
+Overload 3/12、Stupefy（语料内部旧标签 `circle`）3/11。Stupefy Recall 只有
+27.3%，说明现有普通 DTW 对录制会话和圆形起点非常敏感；也证明 Phase 0 的
+留一和模板包重代入高分不能代表跨会话效果。
+
+正式产物：
+
+- `artifacts/cv_evaluation/phase1_session_grouped_b35783b/manifest.json`
+- `artifacts/cv_evaluation/phase1_session_grouped_b35783b/metrics.json`
+- `artifacts/cv_evaluation/phase1_session_grouped_b35783b/report.md`
+- `artifacts/cv_evaluation/phase1_session_grouped_b35783b/confusion_matrix.csv`
+- `misses.jsonl` 可由命令重建，默认不提交。
+
+### 测试、晋升与回退
+
+Phase 1 完整测试证据：
+
+```text
+python -m compileall -q main.py cv game network server tools
+python -m unittest discover -s tests -v
+Ran 474 tests in 21.237s
+OK
+```
+
+覆盖 v1/v2 兼容、稳定 ID、匿名标签、元数据保存、分组 fold 无泄漏、派生样本
+同 fold、locked 分区隔离、确定性指标和报告限制说明。
+
+- 正式识别算法没有切换；本阶段仅增加日志 Schema 和离线评价能力；
+- 当前没有 locked 语料，且 session-grouped 指标很低，因此任何新识别方法都未
+  达到正式启用门槛；
+- 回退时可继续读取 v1 日志，并关闭匿名环境标签；旧模板包和正式分类路径不受影响。
+
 ## 后续阶段
 
-Phase 1 将实现 Schema v2、按 session/user/device 分组的数据划分、锁定评价语料、
-完整错误接受率、margin、推理耗时 p50/p95 和分组报告。legacy 数据缺少可靠
-user/device 元数据时必须明确拒绝对应泛化结论，不能伪造分组。
+Phase 2 将在不改变正式施法结果的前提下运行尺度归一化 Shadow，并统一预览与
+最终识别 pipeline。重点是先给缺少 `palm_scale` 的 legacy 数据建立明确 fallback，
+复用同一分类入口和版本信息，同时避免让当前约 500ms 的模板路径进入逐帧预览。
