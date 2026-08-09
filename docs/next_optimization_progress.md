@@ -2,7 +2,7 @@
 
 实施依据：`docs/next_optimization_plan.md`
 
-当前阶段：Phase 0 至 Phase 4 已完成，Phase 5（服务器发送解耦）进行中
+当前阶段：Phase 0 至 Phase 5 已完成，Phase 6 等待新版本公网部署与双设备人工验收
 
 最近更新：2026-08-10
 
@@ -312,7 +312,43 @@ OK
 
 完整回归：`python -m unittest discover -s tests -q`，492 tests，OK；compileall 通过。
 
-## 后续阶段
+## Phase 5：服务器 Tick 与 WebSocket 发送解耦
 
-Phase 5 开始实现服务器固定 Tick 与 WebSocket 发送解耦。识别候选继续留在 Shadow，
-后续服务器工作不得借机改动玩法、协议语义或客户端本地 CV 架构。
+实现提交：`e3160be refactor: decouple server ticks from websocket sends`
+
+- 每连接使用有界可靠 FIFO、`battle_snapshot` 最新值单槽、wakeup event 和独立 sender task；
+- 可靠消息保持 FIFO 顺序；sender 每发送最多 8 条可靠消息便检查一次快照，避免快照饥饿；
+- 新快照覆盖尚未发送的旧快照并累计 `coalesced_snapshot_count`，快照积压不超过 1；
+- `_tick_loop()` 只同步入队，不再等待任何真实 `websocket.send()`；
+- 发送超时、发送异常或可靠队列满会明确关闭该连接，不静默丢弃可靠事件；
+- 默认可靠队列上限从 64 调整为 256，并增加 5 秒发送超时与 reliable burst 环境配置；
+- `/health` 新增 Tick p50/p95、Tick lag、队列深度、快照合并、发送耗时、超时、失败和
+  背压断开指标；日志不包含重连 token、摄像头或轨迹数据。
+
+异步测试覆盖可靠顺序、快照覆盖、队列溢出、发送超时、sender 取消、两个房间隔离，
+以及 100Hz 测试 Tick 面对永久阻塞 `send()` 仍能推进。服务器集成、房间、重连、部署
+配置和双 WebSocket 探针回归均通过。
+
+完整回归：
+
+```text
+python -m compileall -q main.py cv game network server tools
+python -m unittest discover -s tests -q
+Ran 497 tests in 13.776s
+OK
+```
+
+## Phase 6：公网与人工验收状态
+
+2026-08-10 对 `ws://101.132.63.248:8765` 运行完整公网探针：健康检查、两个真实
+WebSocket、建房/加入、ready、权威施法、完整一局、胜者和最终快照一致性全部通过，
+耗时 10.069 秒。
+
+但公网 `/health` 仍只返回 `status/rooms/connections`，没有本阶段新增的 `metrics`，
+可判定 ECS 当前运行的是旧版本，而不是提交 `e3160be`。因此 Goal 尚不能宣称完成：
+
+1. 将 `e3160be` 或后续交付提交部署到 ECS 的 systemd Python 服务；
+2. 再跑完整公网探针，并确认 `/health.metrics` 存在；
+3. 两台不同网络 Windows 设备人工完成 keyboard、finger/bright-wand CV、断线重连和
+   至少三局 rematch；
+4. 人工验收完成前，不以自动探针替代真实设备结论。

@@ -32,8 +32,11 @@ curl http://47.100.20.30:8765/health
 返回结果应包含：
 
 ```json
-{"status":"ok","rooms":0}
+{"status":"ok","rooms":0,"connections":0,"metrics":{"tick_duration_p95_ms":null}}
 ```
+
+新版本的 `metrics` 还会包含 Tick lag、可靠队列深度、快照合并数、发送耗时、发送
+超时/失败和背压断开数。若公网响应完全没有 `metrics`，说明 ECS 仍在运行旧版本。
 
 ## 公网自动探针
 
