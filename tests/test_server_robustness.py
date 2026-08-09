@@ -3,6 +3,10 @@ import json
 import logging
 import unittest
 
+from network.protocol import decode_message
+from game.snapshots import BattleSnapshot, PROTOCOL_VERSION
+from server.app import BattleServer
+from server.config import ServerConfig
 from server.connection import ClientConnection, SlowClientError
 from server.logging import JsonFormatter
 
@@ -16,6 +20,53 @@ class FakeWebSocket:
 
     async def close(self, code, reason):
         self.closed = (code, reason)
+
+
+class CapturingWebSocket:
+    def __init__(self):
+        self.sent = []
+        self.closed = None
+
+    async def send(self, raw):
+        self.sent.append(decode_message(raw))
+
+    async def close(self, code, reason):
+        self.closed = (code, reason)
+
+
+class TickRoom:
+    room_code = "TICK01"
+    paused = False
+
+    def __init__(self):
+        self.steps = 0
+        self.session = self
+        self.server_tick = 0
+        self.state = type("State", (), {"value": "RUNNING"})()
+
+    def step(self, interval):
+        self.steps += 1
+        self.server_tick += 1
+        return []
+
+    def snapshot(self):
+        return BattleSnapshot(
+            protocol_version=PROTOCOL_VERSION,
+            match_id="tick-test",
+            server_tick=self.server_tick,
+            match_time=0.0,
+            players=(),
+            projectiles=(),
+            winner=None,
+        )
+
+
+class TickRooms:
+    def __init__(self, room):
+        self.rooms = {room.room_code: room}
+
+    def cleanup(self, now):
+        return []
 
 
 class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
@@ -37,6 +88,97 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
         await connection.stop_writer()
 
         self.assertIsNone(connection._writer_task)
+
+    async def test_snapshots_use_one_latest_value_slot(self):
+        connection = ClientConnection(CapturingWebSocket())
+
+        connection.enqueue("battle_snapshot", {"server_tick": 1})
+        connection.enqueue("battle_snapshot", {"server_tick": 2})
+        connection.enqueue("battle_snapshot", {"server_tick": 3})
+
+        self.assertTrue(connection.snapshot_pending)
+        self.assertEqual(connection.send_stats.coalesced_snapshot_count, 2)
+        self.assertEqual(connection.reliable_queue_depth, 0)
+
+    async def test_sender_preserves_reliable_order_then_sends_latest_snapshot(self):
+        websocket = CapturingWebSocket()
+        connection = ClientConnection(websocket)
+        connection.enqueue("battle_event", {"sequence": 1})
+        connection.enqueue("battle_event", {"sequence": 2})
+        connection.enqueue("battle_snapshot", {"server_tick": 4})
+        connection.enqueue("battle_snapshot", {"server_tick": 5})
+        connection.start_writer()
+
+        for _ in range(20):
+            if len(websocket.sent) == 3:
+                break
+            await asyncio.sleep(0)
+        await connection.stop_writer()
+
+        self.assertEqual([item["type"] for item in websocket.sent], [
+            "battle_event", "battle_event", "battle_snapshot",
+        ])
+        self.assertEqual(websocket.sent[0]["payload"]["sequence"], 1)
+        self.assertEqual(websocket.sent[1]["payload"]["sequence"], 2)
+        self.assertEqual(websocket.sent[2]["payload"]["server_tick"], 5)
+
+    async def test_broadcast_enqueue_does_not_wait_for_blocked_websocket_send(self):
+        server = BattleServer()
+        slow = ClientConnection(FakeWebSocket(), room_code="SLOW", player_index=0)
+        fast_socket = CapturingWebSocket()
+        fast = ClientConnection(fast_socket, room_code="FAST", player_index=0)
+        slow.start_writer()
+        fast.start_writer()
+        server._connections = {slow.websocket: slow, fast.websocket: fast}
+
+        server._broadcast_nowait("SLOW", "battle_snapshot", {"server_tick": 1})
+        server._broadcast_nowait("FAST", "battle_event", {"sequence": 1})
+        for _ in range(20):
+            if fast_socket.sent:
+                break
+            await asyncio.sleep(0)
+
+        self.assertEqual(fast_socket.sent[0]["type"], "battle_event")
+        self.assertEqual(slow.reliable_queue_depth, 0)
+        self.assertLessEqual(int(slow.snapshot_pending), 1)
+        await slow.stop_writer()
+        await fast.stop_writer()
+
+    async def test_send_timeout_closes_only_that_connection(self):
+        websocket = FakeWebSocket()
+        connection = ClientConnection(websocket, send_timeout=0.001)
+        connection.start_writer()
+        connection.enqueue("battle_event", {"sequence": 1})
+
+        await asyncio.sleep(0.02)
+        await connection.stop_writer()
+
+        self.assertEqual(websocket.closed, (1013, "client send timeout"))
+        self.assertEqual(connection.send_stats.send_timeout_count, 1)
+
+    async def test_blocked_sender_does_not_reduce_authoritative_tick_frequency(self):
+        config = ServerConfig(port=0, tick_rate=100, snapshot_rate=100)
+        server = BattleServer(config)
+        room = TickRoom()
+        server.rooms = TickRooms(room)
+        connection = ClientConnection(
+            FakeWebSocket(),
+            room_code=room.room_code,
+            player_index=0,
+            send_timeout=5.0,
+        )
+        connection.start_writer()
+        server._connections = {connection.websocket: connection}
+
+        tick_task = asyncio.create_task(server._tick_loop())
+        await asyncio.sleep(0.07)
+        server._closing = True
+        await asyncio.wait_for(tick_task, timeout=0.1)
+        await connection.stop_writer()
+
+        self.assertGreaterEqual(room.steps, 5)
+        self.assertGreater(connection.send_stats.coalesced_snapshot_count, 0)
+        self.assertEqual(len(server._tick_durations_ms), room.steps)
 
     async def test_general_message_rate_is_bounded_per_connection(self):
         connection = ClientConnection(FakeWebSocket())

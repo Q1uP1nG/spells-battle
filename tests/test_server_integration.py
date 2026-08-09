@@ -77,6 +77,8 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["rooms"], 0)
         self.assertEqual(payload["connections"], 2)
+        self.assertIn("tick_duration_p95_ms", payload["metrics"])
+        self.assertIn("coalesced_snapshot_count", payload["metrics"])
 
     async def test_malformed_json_and_version_mismatch_return_explicit_errors(self):
         await self.first.send("not-json")

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections import deque
 import logging
 import json
+from time import perf_counter
 
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
@@ -29,6 +31,17 @@ LOGGER.addHandler(logging.NullHandler())
 LOGGER.propagate = False
 
 
+def _percentile(values, quantile):
+    ordered = sorted(float(value) for value in values)
+    if not ordered:
+        return None
+    position = (len(ordered) - 1) * quantile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
 class BattleServer:
     def __init__(self, config=None):
         self.config = config or ServerConfig.from_env()
@@ -42,12 +55,47 @@ class BattleServer:
         self._server = None
         self._tick_task = None
         self._closing = False
+        self._tick_durations_ms = deque(maxlen=1024)
+        self._tick_lags_ms = deque(maxlen=1024)
 
     @property
     def port(self):
         if self._server is None or not self._server.sockets:
             return self.config.port
         return self._server.sockets[0].getsockname()[1]
+
+    @property
+    def metrics_snapshot(self):
+        connections = tuple(self._connections.values())
+        send_durations = [
+            duration
+            for connection in connections
+            for duration in connection.send_stats.send_durations_ms
+        ]
+        depths = [connection.reliable_queue_depth for connection in connections]
+        return {
+            "tick_duration_p50_ms": _percentile(self._tick_durations_ms, 0.50),
+            "tick_duration_p95_ms": _percentile(self._tick_durations_ms, 0.95),
+            "tick_lag_p50_ms": _percentile(self._tick_lags_ms, 0.50),
+            "tick_lag_p95_ms": _percentile(self._tick_lags_ms, 0.95),
+            "reliable_queue_depth_total": sum(depths),
+            "reliable_queue_depth_max": max(depths, default=0),
+            "snapshot_pending_count": sum(connection.snapshot_pending for connection in connections),
+            "coalesced_snapshot_count": sum(
+                connection.send_stats.coalesced_snapshot_count for connection in connections
+            ),
+            "send_duration_p50_ms": _percentile(send_durations, 0.50),
+            "send_duration_p95_ms": _percentile(send_durations, 0.95),
+            "send_timeout_count": sum(
+                connection.send_stats.send_timeout_count for connection in connections
+            ),
+            "send_failure_count": sum(
+                connection.send_stats.send_failure_count for connection in connections
+            ),
+            "backpressure_disconnect_count": sum(
+                connection.send_stats.backpressure_disconnect_count for connection in connections
+            ),
+        }
 
     async def start(self):
         self._closing = False
@@ -78,7 +126,12 @@ class BattleServer:
         if len(self._connections) >= self.config.max_connections:
             await websocket.close(code=1013, reason="server connection capacity reached")
             return
-        connection = ClientConnection(websocket, queue_limit=self.config.client_send_queue)
+        connection = ClientConnection(
+            websocket,
+            queue_limit=self.config.client_send_queue,
+            send_timeout=self.config.client_send_timeout,
+            reliable_burst=self.config.client_reliable_burst,
+        )
         connection.start_writer()
         self._connections[websocket] = connection
         try:
@@ -114,6 +167,7 @@ class BattleServer:
                 "status": "ok",
                 "rooms": len(self.rooms.rooms),
                 "connections": len(self._connections),
+                "metrics": self.metrics_snapshot,
             },
             separators=(",", ":"),
         ).encode("utf-8")
@@ -284,39 +338,70 @@ class BattleServer:
             deadline += interval
             await asyncio.sleep(max(0.0, deadline - loop.time()))
             now = loop.time()
+            tick_started = perf_counter()
+            tick_lag_ms = max(0.0, (now - deadline) * 1000.0)
             for room in tuple(self.rooms.rooms.values()):
                 events = room.step(interval)
                 for event in events:
-                    await self._broadcast(room.room_code, "battle_event", event_to_payload(event))
+                    self._broadcast_nowait(
+                        room.room_code, "battle_event", event_to_payload(event)
+                    )
                 if (
                     room.session is not None
                     and room.session.server_tick % snapshot_interval == 0
                     and not room.paused
                 ):
-                    await self._broadcast(
+                    self._broadcast_nowait(
                         room.room_code, "battle_snapshot", snapshot_to_payload(room.snapshot())
                     )
                 if events and room.state.value == "ROUND_OVER":
-                    await self._broadcast(
+                    self._broadcast_nowait(
                         room.room_code, "battle_snapshot", snapshot_to_payload(room.snapshot())
                     )
-                    await self._broadcast_room_state(room)
+                    self._broadcast_nowait(room.room_code, "room_state", room.public_state())
             self.rooms.cleanup(now)
+            tick_duration_ms = (perf_counter() - tick_started) * 1000.0
+            self._tick_durations_ms.append(tick_duration_ms)
+            self._tick_lags_ms.append(tick_lag_ms)
+            LOGGER.debug(
+                "server tick",
+                extra={
+                    "context": {
+                        "tick_duration_ms": tick_duration_ms,
+                        "tick_lag_ms": tick_lag_ms,
+                        "room_count": len(self.rooms.rooms),
+                    }
+                },
+            )
 
     async def _broadcast_room_state(self, room):
         await self._broadcast(room.room_code, "room_state", room.public_state())
 
     async def _broadcast(self, room_code, message_type, payload):
+        self._broadcast_nowait(room_code, message_type, payload)
+
+    def _broadcast_nowait(self, room_code, message_type, payload):
         targets = [
             connection
             for connection in self._connections.values()
             if connection.room_code == room_code
         ]
-        if targets:
-            await asyncio.gather(
-                *(connection.send(message_type, payload) for connection in targets),
-                return_exceptions=True,
-            )
+        for connection in targets:
+            try:
+                connection.enqueue(message_type, payload)
+            except Exception as exc:
+                LOGGER.warning(
+                    "connection enqueue rejected",
+                    extra={
+                        "context": {
+                            "room_code": room_code,
+                            "player_index": connection.player_index,
+                            "message_type": message_type,
+                            **connection.send_metrics,
+                            "error": type(exc).__name__,
+                        }
+                    },
+                )
 
     def _bind(self, connection, room_code, player_index):
         connection.room_code = room_code

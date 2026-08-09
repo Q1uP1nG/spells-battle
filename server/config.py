@@ -16,7 +16,9 @@ class ServerConfig:
     max_casts_per_second: int = 12
     log_level: str = "INFO"
     max_rooms: int = 1000
-    client_send_queue: int = 64
+    client_send_queue: int = 256
+    client_send_timeout: float = 5.0
+    client_reliable_burst: int = 8
     max_connections: int = 2000
     max_messages_per_second: int = 30
 
@@ -37,6 +39,8 @@ class ServerConfig:
             raise ValueError("log_level is invalid")
         if self.max_rooms < 1 or self.client_send_queue < 8:
             raise ValueError("server capacity limits are invalid")
+        if self.client_send_timeout <= 0 or self.client_reliable_burst < 1:
+            raise ValueError("sender limits are invalid")
         if self.max_connections < 2 or self.max_messages_per_second < 2:
             raise ValueError("connection limits are invalid")
 
@@ -53,7 +57,9 @@ class ServerConfig:
             max_casts_per_second=int(os.getenv("SPELLS_SERVER_MAX_CASTS_PER_SECOND", "12")),
             log_level=os.getenv("SPELLS_SERVER_LOG_LEVEL", "INFO").upper(),
             max_rooms=int(os.getenv("SPELLS_SERVER_MAX_ROOMS", "1000")),
-            client_send_queue=int(os.getenv("SPELLS_SERVER_CLIENT_SEND_QUEUE", "64")),
+            client_send_queue=int(os.getenv("SPELLS_SERVER_CLIENT_SEND_QUEUE", "256")),
+            client_send_timeout=float(os.getenv("SPELLS_SERVER_CLIENT_SEND_TIMEOUT", "5")),
+            client_reliable_burst=int(os.getenv("SPELLS_SERVER_CLIENT_RELIABLE_BURST", "8")),
             max_connections=int(os.getenv("SPELLS_SERVER_MAX_CONNECTIONS", "2000")),
             max_messages_per_second=int(
                 os.getenv("SPELLS_SERVER_MAX_MESSAGES_PER_SECOND", "30")
