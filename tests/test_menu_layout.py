@@ -126,6 +126,26 @@ class MenuLayoutTests(unittest.TestCase):
 
         self.assertGreater(int(np.count_nonzero(frame)), 2000)
 
+    def test_remote_lobby_joining_hints_match_keyboard_capture(self):
+        from config import HEIGHT, WIDTH
+        from game.remote_session import RemoteBattleSession
+        from renderer.menu import draw_remote_lobby
+
+        session = RemoteBattleSession(network_client=object())
+        frame = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
+        drawn_text = []
+
+        def capture_text(_frame, text, *_args, **_kwargs):
+            drawn_text.append(str(text))
+
+        with patch("renderer.menu.draw_centered_text", side_effect=capture_text):
+            draw_remote_lobby(frame, session, room_code_input="BM", joining=True)
+
+        joined = " ".join(drawn_text)
+        self.assertIn("TYPE ROOM CODE: BM", joined)
+        self.assertIn("ESC CANCEL", joined)
+        self.assertNotIn("M / ESC  BACK TO MENU", joined)
+
     def test_training_overlay_relabel_hint_excludes_protego(self):
         from config import HEIGHT, WIDTH
         from game.cv_training import CVTrainingSession

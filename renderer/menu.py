@@ -158,10 +158,11 @@ def draw_remote_lobby(frame, session, room_code_input="", joining=False):
         draw_centered_text(frame, "A / F CHARACTER     R READY", WIDTH // 2, y + 205, size=23, color=THEME["text"])
     if joining:
         draw_centered_text(frame, f"TYPE ROOM CODE: {room_code_input or '_'}", WIDTH // 2, y + 255, size=26, color=THEME["gold_bright"])
-        draw_centered_text(frame, "ENTER JOIN  ·  BACKSPACE EDIT", WIDTH // 2, y + 295, size=18, color=THEME["muted"])
+        draw_centered_text(frame, "ENTER JOIN  ·  BACKSPACE EDIT  ·  ESC CANCEL", WIDTH // 2, y + 295, size=18, color=THEME["muted"])
     elif session.last_error:
         draw_centered_text(frame, session.last_error[:70], WIDTH // 2, y + 270, size=19, color=(100, 120, 255))
-    draw_centered_text(frame, "M / ESC  BACK TO MENU", WIDTH // 2, y + 330, size=18, color=THEME["muted"])
+    if not joining:
+        draw_centered_text(frame, "M / ESC  BACK TO MENU", WIDTH // 2, y + 330, size=18, color=THEME["muted"])
 
 
 def draw_character_select(frame, game, fps, tick, mode_label=""):

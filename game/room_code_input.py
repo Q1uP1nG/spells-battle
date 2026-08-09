@@ -95,6 +95,9 @@ class PhysicalRoomCodeKeyboard:
         if not self.available:
             return []
         down, pressed_since_poll = self._snapshot()
-        newly_pressed = (down - self._down) | (pressed_since_poll - self._down)
+        # The low bit records a press since the previous query. Keep it even
+        # when the key was down in the previous snapshot: the player may have
+        # released and pressed it again between two rendered frames.
+        newly_pressed = (down - self._down) | pressed_since_poll
         self._down = down
         return [self._VK_TO_KEY[key] for key in self._VK_TO_KEY if key in newly_pressed]

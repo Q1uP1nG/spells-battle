@@ -59,6 +59,24 @@ class RoomCodeInputTests(unittest.TestCase):
 
         self.assertEqual(keyboard.poll(), [ord("B")])
 
+    def test_physical_keyboard_detects_release_and_repress_between_frames(self):
+        from game.room_code_input import PhysicalRoomCodeKeyboard
+
+        states = {ord("A"): 0x8000}
+        keyboard = PhysicalRoomCodeKeyboard(lambda key: states.get(key, 0))
+        keyboard.begin()
+
+        # The high-bit snapshots missed a very fast release and repress, but
+        # GetAsyncKeyState's low bit still records the new key press.
+        states[ord("A")] = 0x8001
+
+        self.assertEqual(keyboard.poll(), [ord("A")])
+
+    def test_full_room_code_ignores_extra_characters(self):
+        from game.room_code_input import apply_room_code_key
+
+        self.assertEqual(apply_room_code_key("ABC123", ord("Z")), ("ABC123", "ignored"))
+
 
 if __name__ == "__main__":
     unittest.main()
