@@ -523,7 +523,7 @@ git diff --check
 Once a public endpoint exists, the remaining external acceptance starts with:
 
 ```powershell
-python tools/remote_duel_probe.py --url wss://<deployed-domain>
+python tools/remote_duel_probe.py --url ws://<ECS_PUBLIC_IP>:8765
 ```
 
 The shared Conda environment's global `pip check` reports unrelated pre-existing
@@ -544,11 +544,12 @@ unrelated tools.
 
 ### External acceptance still required
 
-All repository phases are implemented and locally verified. The architecture's final
-definition also requires two physical devices on different networks to connect
-through a real Alibaba Cloud `wss://` endpoint. This cannot be completed without an
-ECS instance, public domain/DNS, and authorization to deploy. Follow
-`deploy/README.md` and `docs/remote_duel_runbook.md`; record the public acceptance
+All repository phases are implemented and locally verified. The revised architecture's
+final definition also requires two physical devices on different networks to connect
+through a real Alibaba Cloud ECS public IPv4 endpoint. A domain and DNS are no longer
+required; completing this external acceptance still needs an ECS public IP and
+authorization to deploy. Follow `docs/remote_duel_direct_ip_route.md`,
+`deploy/README.md`, and `docs/remote_duel_runbook.md`; record the public acceptance
 results here after deployment.
 
 ## Post-Phase 7 completion audit hardening
@@ -584,3 +585,48 @@ Real log snapshot before/after the full suite
 git diff --check
   PASS
 ```
+
+## Deployment route revision: public IP first
+
+Date: 2026-08-09
+
+The user explicitly chose to avoid the domain registration and waiting period. The
+first-release deployment route is therefore `ws://ECS_PUBLIC_IP:8765`, with no DNS,
+certificate, or reverse proxy dependency. This decision does not change the
+authoritative battle architecture or wire protocol.
+
+Repository changes:
+
+- Default `compose.yaml` publishes the authoritative service on 8765/TCP.
+- Added `compose.tls.yaml` to preserve Caddy/WSS as an optional later upgrade.
+- Added a domainless deployment route document and rewrote deployment instructions.
+- Updated the architecture, reusable Goal, runbook, environment example, README, and
+  deployment regression tests to use the direct-IP route.
+- Documented the accepted plaintext boundary: suitable for controlled private tests,
+  not a public service carrying accounts, chat, payment, or other sensitive data.
+
+External completion now requires only an ECS public IPv4 address, deployment access,
+and two physical clients on different networks. It no longer requires a domain.
+
+Verification after the route revision:
+
+```text
+python -m unittest tests.test_server_deployment tests.test_remote_duel_probe -v
+  Ran 9 tests in 0.965s
+  OK
+
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 441 tests in 20.188s
+  OK
+
+git diff --check
+  PASS
+```
+
+Docker is not installed on the current Windows workstation, so a local
+`docker compose config`/container start could not be performed. Compose structure is
+covered by YAML regression tests; the actual container build, health check, and public
+port check remain part of the ECS deployment gate.

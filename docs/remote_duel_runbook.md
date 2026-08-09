@@ -58,7 +58,7 @@ python -m unittest discover -s tests
 部署后可直接运行无摄像头双客户端探针：
 
 ```powershell
-python tools/remote_duel_probe.py --url wss://duel.example.com
+python tools/remote_duel_probe.py --url ws://ECS_PUBLIC_IP:8765
 ```
 
 它会先检查 `/health`，再创建两个真实 WebSocket 客户端，完成建房、加入、
@@ -67,9 +67,9 @@ ready、心跳、连续权威施法、胜负和双方最终快照一致性检查
 
 ## 公网验收清单
 
-部署步骤见 `deploy/README.md`。发布前必须在两台不同网络的 Windows 设备上确认：
+无域名公网部署步骤见 `docs/remote_duel_direct_ip_route.md` 和 `deploy/README.md`。发布前必须在两台不同网络的 Windows 设备上确认：
 
-- `https://域名/health` 返回 ok；
+- `http://ECS_PUBLIC_IP:8765/health` 返回 ok；
 - 两端可使用房间码进入同一局；
 - 角色、HP、MP、状态、弹体、碰撞、胜负一致；
 - finger 与 bright-wand CV 至少各完成一局，keyboard/CV 混用正常；

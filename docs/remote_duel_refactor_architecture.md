@@ -1,8 +1,13 @@
 # Spells Battle 远程对战重构架构设计
 
-状态：待实施  
+状态：仓库重构已实施，待阿里云公网与双设备验收
 目标平台：Windows 客户端 + 阿里云 Linux 服务端  
-基线：保留 Solo、PVE、本地 Duel、CV Training，以及当前 374 个自动化测试
+基线：保留 Solo、PVE、本地 Duel、CV Training；当前完整套件为 441 个自动化测试
+
+部署决策修订（2026-08-09）：首版使用阿里云 ECS 公网 IPv4 和
+`ws://ECS_PUBLIC_IP:8765` 直连，不把域名、DNS、TLS 或 Caddy 作为上线前置条件。
+该路线适用于受控的小规模测试；`wss://` 保留为后续可选安全升级。详细实施与风险边界见
+`docs/remote_duel_direct_ip_route.md`。
 
 ## 1. 重构目标
 
@@ -67,7 +72,7 @@ Render <- Snapshot/Event    <--- Battle simulation   ---> Snapshot/Event -> Rend
 
 - 输入事件频率低，JSON 的调试便利性比二进制节省更重要；
 - 同一连接支持双向主动推送；
-- 可以通过 Nginx 或 Caddy 使用 `wss://`；
+- 首版可直接通过 ECS 公网 IP 使用 `ws://`，以后无需改协议即可通过 Nginx 或 Caddy 升级为 `wss://`；
 - 浏览器工具、Python 测试客户端和日志都容易接入。
 
 第一版建议服务器 30 Hz 固定步进，10-15 Hz 广播状态快照。客户端以现有 60 FPS 渲染，并对远端弹体位置做插值。实际参数必须放入配置，不能散落为魔法数字。
@@ -125,10 +130,11 @@ magic_spale_refactor/
     test_server_integration.py
 
   deploy/
-    Dockerfile.server
-    compose.yaml
-    Caddyfile.example             # 或 nginx.conf.example，二选一
-    env.example
+    README.md
+    Caddyfile                     # 仅供可选 TLS 升级
+  compose.yaml                    # 默认公网 IP 直连部署
+  compose.tls.yaml                # 可选域名/TLS 部署
+  .env.example
 ```
 
 文件名可以在实施时小幅调整，但职责边界不得改变。
@@ -266,7 +272,7 @@ WAITING_FOR_PLAYER
 - 每连接施法请求需要速率限制；
 - 消息大小设置上限；
 - 非法 JSON、未知消息类型和协议版本不匹配要返回明确错误并记录；
-- 正式环境仅开放 443，通过 `wss://` 接入；
+- 首版受控公网测试开放 `8765/TCP` 并通过 `ws://ECS_PUBLIC_IP:8765` 接入，优先在安全组限制玩家来源 IP；面向陌生用户或传输敏感数据前必须升级 `wss://`；
 - 服务端日志不得包含摄像头内容、重连令牌全文或其他敏感数据。
 
 ## 7. 客户端运行模型
@@ -397,13 +403,14 @@ OpenCV、MediaPipe 和渲染继续留在主线程，网络线程禁止直接修�
 
 ### Phase 6：阿里云部署
 
-目标：公网通过 `wss://` 连接。
+目标：不依赖域名，通过 ECS 公网 IPv4 和 `ws://ECS_PUBLIC_IP:8765` 连接。
 
 - 服务端 Dockerfile；
 - `/health` 健康检查；
 - 环境变量配置 host、port、tick、snapshot rate、日志级别和重连时限；
-- Caddy/Nginx TLS 反向代理；
-- 阿里云安全组仅开放 22（限制来源）和 443；
+- 默认 Compose 直接发布服务端 `8765/TCP`；
+- 阿里云安全组开放 8765（优先限制玩家来源 IP），22 仅限制管理来源；
+- Caddy/TLS 作为以后切换 `wss://` 的可选部署，不阻塞首版；
 - 进程自动重启、日志轮转和基础监控；
 - 客户端服务器地址可配置，不硬编码。
 
@@ -424,7 +431,7 @@ OpenCV、MediaPipe 和渲染继续留在主线程，网络线程禁止直接修�
 
 ### 10.1 必须保留的回归测试
 
-- 当前 374 个测试持续通过；
+- 当前 441 个测试持续通过；
 - Solo、PVE、本地 Duel、CV Training 的公开行为不变；
 - keyboard 与 CV 的施法结果仍遵循同一套规则。
 
@@ -476,14 +483,14 @@ OpenCV、MediaPipe 和渲染继续留在主线程，网络线程禁止直接修�
 2. 一名玩家断线时暂停还是继续。建议：暂停并保留 45 秒。
 3. Remote Duel 是否允许 keyboard 与 CV 混用。建议：允许，服务器只关心合法 CastIntent。
 4. 第一版是否需要注册登录。建议：不需要，使用临时玩家名和重连令牌。
-5. 部署采用 Docker Compose + Caddy，还是现有运维偏好的 Nginx/systemd。建议：Docker Compose + Caddy。
+5. 部署入口：已确认首版采用 Docker Compose + ECS 公网 IP 直连；域名、Caddy 和 `wss://` 以后按安全需求升级。
 6. 是否保留本地同屏 Duel。建议：永久保留，作为离线回归和演示模式。
 
 ## 14. 完成定义
 
 本次远程对战重构完成，需要同时满足：
 
-- 两台异地设备通过阿里云 `wss://` 服务和房间码进入同一战局；
+- 两台异地设备通过阿里云公网 IP 的 `ws://ECS_PUBLIC_IP:8765` 服务和房间码进入同一战局；
 - 双方看到一致的角色、HP、MP、状态、弹体、碰撞和胜负；
 - 摄像头图像不离开客户端；
 - 服务端不依赖 OpenCV、MediaPipe、Pygame 或显示设备；
@@ -491,4 +498,3 @@ OpenCV、MediaPipe 和渲染继续留在主线程，网络线程禁止直接修�
 - Solo、PVE、本地 Duel、CV Training 保持可用；
 - 所有旧测试和新增网络测试通过；
 - 提供本地启动、双客户端测试和阿里云部署文档。
-

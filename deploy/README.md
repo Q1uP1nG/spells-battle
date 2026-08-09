@@ -1,38 +1,56 @@
-# Spells Battle 阿里云部署
+# Spells Battle 阿里云公网 IP 部署
+
+首版直接使用 ECS 公网 IPv4，不需要申请域名、配置 DNS、申请证书或运行 Caddy。
 
 ## 前提
 
-- 一台安装了 Docker Engine 与 Docker Compose Plugin 的 Linux ECS。
-- 一个已备案/可用域名，A 记录指向 ECS 公网 IP。
-- 阿里云安全组入方向仅开放：`443/TCP`、`443/UDP`，以及限定管理来源 IP 的 `22/TCP`。Caddy 可通过 443 的 TLS-ALPN 完成证书签发和续期。
+- 一台带公网 IPv4 的 Linux ECS；
+- Docker Engine 和 Docker Compose Plugin；
+- 阿里云安全组入方向开放 `8765/TCP`；
+- `22/TCP` 仅允许管理员当前公网 IP；
 - 服务器不需要摄像头、OpenCV、MediaPipe、Pygame 或角色图片。
 
-## 部署
+`8765/TCP` 优先只允许两位玩家的公网 IP。如果玩家网络 IP 不固定，可以在短期验收窗口允许 `0.0.0.0/0`，测试完成后再收紧。
+
+## 默认部署
 
 ```bash
 git clone <your-repository-url> spells-battle
 cd spells-battle
 cp .env.example .env
-# 编辑 .env，把 SPELLS_DOMAIN 改成真实域名
 docker compose up -d --build
 docker compose ps
-curl https://你的域名/health
+curl http://127.0.0.1:8765/health
 ```
 
-在客户端仓库运行自动公网探针：
+默认 `compose.yaml` 只运行权威服务端，并将 ECS 的 `8765` 映射到容器端口。外部设备使用下面的地址检查；请把示例 IP 替换成 ECS 控制台显示的公网 IPv4：
 
-```powershell
-python tools/remote_duel_probe.py --url wss://你的域名
+```bash
+curl http://47.100.20.30:8765/health
 ```
 
-Caddy 自动申请并续期 TLS 证书，将 HTTPS/WSS 流量转发给只在 Compose 内网暴露的权威服务。应用容器使用非 root 用户运行，并带有健康检查；两个服务均设置 `unless-stopped` 自动重启与 Docker JSON 日志轮转。
+返回结果应包含：
 
-## 客户端
+```json
+{"status":"ok","rooms":0}
+```
 
-在两台 Windows 设备启动游戏前配置同一地址：
+## 公网自动探针
+
+在任意外部客户端仓库中运行：
 
 ```powershell
-$env:SPELLS_SERVER_URL = "wss://duel.example.com"
+python tools/remote_duel_probe.py --url ws://47.100.20.30:8765
+```
+
+探针会检查健康状态，并通过两个真实 WebSocket 连接完成建房、加入、ready、施法、胜负和最终快照一致性验证。
+
+## 两台 Windows 客户端
+
+两台设备启动游戏前都设置相同的服务地址：
+
+```powershell
+$env:SPELLS_SERVER_URL = "ws://47.100.20.30:8765"
 python main.py
 ```
 
@@ -43,17 +61,45 @@ python main.py
 ```bash
 docker compose ps
 docker compose logs --tail=200 spells-server
-docker compose logs --tail=200 caddy
-curl -fsS https://你的域名/health
+curl -fsS http://127.0.0.1:8765/health
 ```
 
-`/health` 返回 `{"status":"ok","rooms":N}`。房间只在内存中保存，服务重启会结束当前对局，这是首版的设计边界。
+应用容器以非 root 用户运行，带有健康检查、`unless-stopped` 自动重启和 Docker JSON 日志轮转。房间只保存在内存中，服务重启会结束当前对局。
 
-升级前先在本机运行完整测试。更新时执行 `git pull` 和 `docker compose up -d --build`。若需要回退，切回上一个已验证 Git commit 后重新 build；不要在正在运行的房间上做无提示热更新。
+更新前先确认没有正在运行的房间：
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+需要回退时，切换到上一个已验证 Git commit 后重新构建；不要在正在运行的房间上进行无提示更新。
 
 ## 故障定位
 
-- 证书失败：检查域名解析、443 安全组、ECS 防火墙和 TLS-ALPN 是否被上游代理拦截。
-- `/health` 不通：先用 `docker compose ps` 查看容器健康状态，再查两个服务日志。
-- WebSocket 能连接但无法开局：确认两端协议版本一致，并查看服务端是否返回 `version_mismatch` 或房间错误。
-- 客户端反复重连：检查 `SPELLS_SERVER_URL` 必须使用公网 `wss://` 域名，不能写容器名或 ECS 私网地址。
+- 外网 `/health` 不通：依次检查 ECS 公网 IP、安全组 `8765/TCP`、系统防火墙、容器状态和端口映射。
+- ECS 本机 `/health` 不通：运行 `docker compose ps` 和 `docker compose logs --tail=200 spells-server`。
+- WebSocket 可连接但无法开局：确认两端代码和协议版本一致，检查 `version_mismatch` 或房间错误。
+- 客户端反复重连：确认 `SPELLS_SERVER_URL` 使用公网 `ws://IP:8765`，不能写容器名、`127.0.0.1` 或 ECS 私网 IP。
+- 公网 IP 发生变化：更新两端环境变量即可，无需修改代码。
+
+## 明文连接风险
+
+`ws://` 不加密。链路上的第三方理论上可以观察或篡改游戏命令、房间码和重连信息。当前首版不传视频、图像、账户、聊天或支付数据，因此仅将此方案用于熟人之间的受控测试。面向陌生玩家公开运营或增加敏感数据前，必须升级 `wss://`。
+
+## 可选域名/TLS 升级
+
+以后需要 TLS 时，先把域名解析到 ECS，在 `.env` 中设置 `SPELLS_DOMAIN`，再使用可选配置：
+
+```bash
+docker compose -f compose.tls.yaml up -d --build
+curl https://你的域名/health
+```
+
+客户端相应改为：
+
+```powershell
+$env:SPELLS_SERVER_URL = "wss://你的域名"
+```
+
+此升级只改变接入层，不改变战斗引擎、房间、协议或客户端模式。

@@ -30,24 +30,39 @@ class ServerDeploymentTests(unittest.TestCase):
         for dependency in ("opencv", "mediapipe", "pygame", "Pillow"):
             self.assertNotIn(dependency, requirements)
 
-    def test_compose_exposes_only_caddy_and_rotates_logs(self):
+    def test_default_compose_publishes_direct_websocket_port_and_rotates_logs(self):
         compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
         services = compose["services"]
 
-        self.assertNotIn("ports", services["spells-server"])
+        self.assertEqual(set(services), {"spells-server"})
+        self.assertIn("8765:8765", services["spells-server"]["ports"])
         self.assertEqual(services["spells-server"]["restart"], "unless-stopped")
-        self.assertIn("443:443", services["caddy"]["ports"])
-        self.assertNotIn("80:80", services["caddy"]["ports"])
         self.assertEqual(
             services["spells-server"]["logging"]["options"]["max-file"], "5"
         )
 
-    def test_caddy_terminates_tls_and_proxies_websocket_capable_http(self):
+    def test_optional_tls_compose_keeps_application_port_private(self):
+        compose = yaml.safe_load(
+            (ROOT / "compose.tls.yaml").read_text(encoding="utf-8")
+        )
+        services = compose["services"]
+
+        self.assertNotIn("ports", services["spells-server"])
+        self.assertIn("443:443", services["caddy"]["ports"])
+        self.assertNotIn("80:80", services["caddy"]["ports"])
+
+    def test_optional_caddy_terminates_tls_and_proxies_websocket_capable_http(self):
         caddyfile = (ROOT / "deploy" / "Caddyfile").read_text(encoding="utf-8")
 
         self.assertIn("{$SPELLS_DOMAIN}", caddyfile)
         self.assertIn("reverse_proxy spells-server:8765", caddyfile)
         self.assertIn("Strict-Transport-Security", caddyfile)
+
+    def test_environment_example_defaults_to_domainless_direct_ip_route(self):
+        env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
+
+        self.assertIn("ws://47.100.20.30:8765", env_example)
+        self.assertIn("# SPELLS_DOMAIN=duel.example.com", env_example)
 
     def test_headless_server_import_does_not_load_client_device_dependencies(self):
         command = (
