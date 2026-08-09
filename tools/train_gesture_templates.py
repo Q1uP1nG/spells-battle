@@ -1,4 +1,4 @@
-"""Train learned DTW gesture templates from labeled CV session logs.
+"""Build a representative DTW template pack from labeled CV trajectories.
 
 Usage:
     python tools/train_gesture_templates.py
@@ -7,7 +7,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 import sys
 from datetime import datetime, timezone
@@ -20,6 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cv.template_classifier import TARGET_POINT_COUNT, _dtw_distance, _normalize_trajectory, template_label_to_spell
+from tools.gesture_corpus import load_canonical_corpus
 
 TRAJECTORY_SPELLS = ("incendio", "circle", "glacius", "lumos", "overload")
 DEFAULT_LOG_GLOB = "logs/cv_sessions/*.jsonl"
@@ -41,121 +41,23 @@ def load_labeled_trajectories(
     reviewed_path=None,
 ):
     buckets = {spell: [] for spell in TRAJECTORY_SPELLS}
-    bank_count = _load_bank_trajectories(bank_path, buckets)
-    reviewed_count = _load_reviewed_trajectories(reviewed_path, buckets)
-    if bank_count > 0:
-        sources = [str(bank_path)]
-        if reviewed_count > 0:
-            sources.append(str(reviewed_path))
-        return buckets, sources
-
-    files = sorted(glob.glob(str(log_glob)))
-    for path in files:
-        with open(path, "r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                spell = _record_label(record, min_confidence, include_weak_labels)
-                if spell is None:
-                    continue
-                normalized = _normalize_trajectory(record.get("points") or [])
-                if normalized is None or normalized.shape != (TARGET_POINT_COUNT, 2):
-                    continue
-                buckets[spell].append(normalized.astype(np.float32))
-    if reviewed_count > 0:
-        files.append(str(reviewed_path))
-    return buckets, files
-
-
-def _load_bank_trajectories(bank_path, buckets):
-    if not bank_path:
-        return 0
-    path = Path(bank_path)
-    if not path.exists():
-        return 0
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return 0
-    slots = data.get("slots")
-    if not isinstance(slots, dict):
-        return 0
-
-    count = 0
-    for spell in TRAJECTORY_SPELLS:
-        for entry in slots.get(spell, []) or []:
-            if not isinstance(entry, dict):
-                continue
-            normalized = _normalize_trajectory(entry.get("points") or [])
-            if normalized is None or normalized.shape != (TARGET_POINT_COUNT, 2):
-                continue
-            buckets[spell].append(normalized.astype(np.float32))
-            count += 1
-    return count
-
-
-def _load_reviewed_trajectories(reviewed_path, buckets):
-    if not reviewed_path:
-        return 0
-    path = Path(reviewed_path)
-    if not path.exists():
-        return 0
-
-    count = 0
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return 0
-    latest_by_sample = {}
-    anonymous_index = 0
-    for line in lines:
-        if not line.strip():
-            continue
-        try:
-            entry = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        sample_key = entry.get("sample_id")
-        if sample_key is None:
-            anonymous_index += 1
-            sample_key = f"__anonymous_{anonymous_index}"
-        latest_by_sample[str(sample_key)] = entry
-
-    for entry in latest_by_sample.values():
-        if entry.get("review_status") != "accepted":
-            continue
-        label = entry.get("label")
-        if label not in TRAJECTORY_SPELLS:
-            continue
-        normalized = _normalize_trajectory(entry.get("points") or [])
+    corpus = load_canonical_corpus(
+        log_glob=log_glob,
+        bank_path=bank_path,
+        reviewed_path=reviewed_path,
+        include_weak_labels=include_weak_labels,
+        min_confidence=min_confidence,
+    )
+    for sample in corpus.samples:
+        normalized = _normalize_trajectory(sample.points)
         if normalized is None or normalized.shape != (TARGET_POINT_COUNT, 2):
             continue
-        buckets[label].append(normalized.astype(np.float32))
-        count += 1
-    return count
+        buckets[sample.label].append(normalized.astype(np.float32))
+    load_labeled_trajectories.last_audit = corpus.audit
+    return buckets, corpus.source_files
 
 
-def _record_label(record, min_confidence, include_weak_labels):
-    intended = record.get("intended_spell")
-    if intended in TRAJECTORY_SPELLS:
-        return intended
-    if not include_weak_labels:
-        return None
-    primary = record.get("primary") or {}
-    spell = primary.get("spell")
-    if (
-        spell in TRAJECTORY_SPELLS
-        and float(primary.get("confidence") or 0.0) >= min_confidence
-        and record.get("cast_success")
-        and len(record.get("points") or []) >= 8
-    ):
-        return spell
-    return None
+load_labeled_trajectories.last_audit = {}
 
 
 def _pairwise_dtw(samples):
@@ -264,7 +166,7 @@ def main(argv=None):
     parser.add_argument(
         "--include-weak-labels",
         action="store_true",
-        help="also learn from successful high-confidence gameplay casts",
+        help="also include successful high-confidence gameplay casts as weak labels",
     )
     args = parser.parse_args(argv)
 
@@ -282,7 +184,15 @@ def main(argv=None):
         bank_path=bank_path,
         reviewed_path=reviewed_path,
     )
-    print(f"Scanned {len(files)} log files")
+    print(f"Scanned {len(files)} corpus source files")
+    audit = getattr(load_labeled_trajectories, "last_audit", {})
+    if audit:
+        print(
+            "Canonical corpus: "
+            f"{audit.get('canonical_samples', 0)} samples, "
+            f"{audit.get('duplicates_merged', 0)} duplicates merged, "
+            f"{audit.get('discarded_by_review', 0)} discarded by review"
+        )
     for spell in TRAJECTORY_SPELLS:
         print(f"  {spell:10s}: {len(buckets[spell])} usable trajectories")
 

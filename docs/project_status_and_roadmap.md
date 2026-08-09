@@ -147,7 +147,7 @@ The bright marker path is the most valuable wand route but still needs tuning. K
 
 ### Gesture Classification
 
-The default primary classifier is conservative fusion when the learned template model is present, and falls back to the runtime hybrid/heuristic path when it is not. DTW/template influence is intentionally limited: agreement adds confidence, high-confidence template rescue can recover a heuristic no-match, and conflicts keep the heuristic result. The fixed-template shadow classifier remains diagnostic only.
+The default primary classifier is conservative fusion when the representative trajectory template pack is present, and falls back to the runtime hybrid/heuristic path when it is not. This is non-parametric DTW matching, not a trained supervised model. DTW/template influence is intentionally limited: agreement adds confidence, high-confidence template rescue can recover a heuristic no-match, and conflicts keep the heuristic result. The fixed-template shadow classifier remains diagnostic only.
 
 ### Frontend Presentation
 

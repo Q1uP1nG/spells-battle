@@ -167,7 +167,7 @@ def template_label_to_spell(label: str) -> str:
 
 
 class DataTemplateClassifier:
-    """DTW classifier backed by prototypes learned from Mode4 logs."""
+    """Non-parametric DTW matcher backed by representative Mode 4 trajectories."""
 
     def __init__(self, template_path=None):
         self.template_path = Path(template_path) if template_path is not None else DEFAULT_DATA_TEMPLATE_PATH
@@ -186,10 +186,10 @@ class DataTemplateClassifier:
             with open(self.template_path, "r", encoding="utf-8") as handle:
                 payload = json.load(handle)
         except FileNotFoundError:
-            self.load_error = "template model missing"
+            self.load_error = "template pack missing"
             return
         except (OSError, ValueError, TypeError) as exc:
-            self.load_error = f"template model invalid: {exc}"
+            self.load_error = f"template pack invalid: {exc}"
             return
 
         target_count = int(payload.get("target_point_count") or TARGET_POINT_COUNT)
@@ -207,7 +207,7 @@ class DataTemplateClassifier:
 
         self.loaded = bool(self._prototypes)
         if not self.loaded and not self.load_error:
-            self.load_error = "template model has no prototypes"
+            self.load_error = "template pack has no prototypes"
 
     def _best_for_spell(self, normalized: np.ndarray, spell: str) -> float:
         flipped = _flip_x(normalized)
@@ -228,7 +228,7 @@ class DataTemplateClassifier:
                 spell=None,
                 confidence=0.0,
                 method="data_template",
-                reason=self.load_error or "template model missing",
+                reason=self.load_error or "template pack missing",
             )
 
         normalized = _normalize_trajectory(points)

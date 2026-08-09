@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "created_at": "2026-08-09T15:55:20.184921+00:00",
+  "git_commit": "31958d259236de04df6c1da4b6f3c7183d374a6f",
+  "classifier_versions": {
+    "heuristic": "source@31958d259236de04df6c1da4b6f3c7183d374a6f",
+    "fused": "source@31958d259236de04df6c1da4b6f3c7183d374a6f",
+    "real_template": "leave-one-out-dtw-v1"
+  },
+  "template_pack": {
+    "path": "models/gesture_templates.json",
+    "available": true,
+    "schema_version": 1,
+    "created": "2026-06-25T02:59:54.890478+00:00",
+    "sha256": "97cb5a1438e0757a76eeb2f1db8e5f79f6c2dac4071592dddc7827da7eb0af9d"
+  },
+  "corpus_version": "sha256:6cb2ad04593fc760b6a658694fba9afc0fbc6adc7931b7fc20701e4b4535f69f",
+  "command": [
+    "tools\\evaluate_gesture_templates.py",
+    "--bank",
+    "models\\gesture_template_bank.json",
+    "--reviewed",
+    "models\\gesture_reviewed_samples.jsonl",
+    "--output-dir",
+    "artifacts\\cv_evaluation\\phase0_baseline_31958d2"
+  ],
+  "corpus_audit": {
+    "schema": 1,
+    "input_candidates": 104,
+    "canonical_samples": 77,
+    "duplicates_merged": 27,
+    "discarded_by_review": 0,
+    "label_conflicts": [],
+    "missing_source": 11,
+    "review_records": 86,
+    "latest_reviews": 86,
+    "accepted_reviews": 27,
+    "discarded_reviews": 59,
+    "corpus_version": "sha256:6cb2ad04593fc760b6a658694fba9afc0fbc6adc7931b7fc20701e4b4535f69f"
+  },
+  "source_files": [
+    "models\\gesture_reviewed_samples.jsonl",
+    "models\\gesture_template_bank.json"
+  ]
+}

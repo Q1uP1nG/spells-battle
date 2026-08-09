@@ -1,8 +1,10 @@
+import json
 import sys
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +80,31 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(summary["data_template"]["total"], 2)
         self.assertEqual(summary["fused"]["total"], 2)
 
+    def test_evaluation_reuses_each_pairwise_dtw_distance(self):
+        from cv.gesture_pipeline import ClassificationResult
+        import tools.evaluate_gesture_templates as evaluator
+
+        class FakeDataTemplate:
+            def classify(self, _points, _side):
+                return ClassificationResult(None, 0.0, "data_template", "fake")
+
+        samples = evaluator.build_samples([
+            self._sample("incendio", [[0, 0], [70, 0], [140, 0]], attempt=1),
+            self._sample("incendio", [[0, 2], [70, 2], [140, 2]], attempt=2),
+            self._sample("glacius", [[0, 0], [0, 70], [0, 140]], attempt=3),
+            self._sample("glacius", [[2, 0], [2, 70], [2, 140]], attempt=4),
+        ])
+        original_distance = evaluator._dtw_distance
+
+        with patch.object(
+            evaluator,
+            "_dtw_distance",
+            side_effect=original_distance,
+        ) as distance:
+            evaluator.evaluate_samples(samples, data_template_classifier=FakeDataTemplate())
+
+        self.assertEqual(distance.call_count, 6)
+
     def test_circle_training_label_is_scored_against_stupefy_spell(self):
         from tools.evaluate_gesture_templates import summarize_predictions
 
@@ -89,6 +116,96 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(summary["correct"], 2)
         self.assertEqual(summary["by_label"]["circle"]["correct"], 1)
         self.assertEqual(summary["by_label"]["overload"]["correct"], 1)
+
+    def test_review_label_is_loaded_and_discarded_review_is_skipped(self):
+        from tools.evaluate_gesture_templates import build_samples
+
+        samples = build_samples([
+            {
+                "sample_id": "accepted-circle",
+                "review_status": "accepted",
+                "label": "circle",
+                "points": [[0, 0], [20, 20], [0, 40], [-20, 20], [0, 0]],
+            },
+            {
+                "sample_id": "discarded-circle",
+                "review_status": "discarded",
+                "label": "circle",
+                "points": [[0, 0], [30, 30], [0, 60], [-30, 30], [0, 0]],
+            },
+        ])
+
+        self.assertEqual(len(samples), 1)
+        self.assertEqual(samples[0].sample_id, "accepted-circle")
+        self.assertEqual(samples[0].label, "circle")
+
+    def test_canonical_cli_writes_reproducible_artifact_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            reviewed_path = root / "reviewed.jsonl"
+            output_path = root / "evaluation"
+            entries = [
+                {
+                    "sample_id": "incendio-1",
+                    "review_status": "accepted",
+                    "label": "incendio",
+                    "points": [[0, 0], [70, 0], [140, 0], [210, 0]],
+                },
+                {
+                    "sample_id": "incendio-2",
+                    "review_status": "accepted",
+                    "label": "incendio",
+                    "points": [[0, 2], [70, 2], [140, 2], [210, 2]],
+                },
+                {
+                    "sample_id": "discarded",
+                    "review_status": "discarded",
+                    "label": "glacius",
+                    "points": [[0, 0], [0, 70], [0, 140], [0, 210]],
+                },
+            ]
+            reviewed_path.write_text(
+                "\n".join(json.dumps(entry) for entry in entries), encoding="utf-8"
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "tools/evaluate_gesture_templates.py",
+                    "--reviewed",
+                    str(reviewed_path),
+                    "--output-dir",
+                    str(output_path),
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                timeout=15,
+            )
+
+            artifact_names = {
+                "manifest.json",
+                "metrics.json",
+                "report.md",
+                "confusion_matrix.csv",
+                "misses.jsonl",
+            }
+            written_artifacts = {path.name for path in output_path.iterdir()}
+            metrics = json.loads((output_path / "metrics.json").read_text(encoding="utf-8"))
+            manifest = json.loads((output_path / "manifest.json").read_text(encoding="utf-8"))
+            report = (output_path / "report.md").read_text(encoding="utf-8")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(written_artifacts, artifact_names)
+        self.assertEqual(metrics["total"], 2)
+        self.assertIn("macro", metrics["methods"]["fused"])
+        self.assertIn("per_spell", metrics["methods"]["fused"])
+        self.assertEqual(manifest["corpus_audit"]["canonical_samples"], 2)
+        self.assertEqual(manifest["corpus_audit"]["discarded_reviews"], 1)
+        self.assertEqual(manifest["corpus_version"], manifest["corpus_audit"]["corpus_version"])
+        self.assertIn("classifier_versions", manifest)
+        self.assertIn("template_pack", manifest)
+        self.assertIn("not evidence of cross-user or cross-device generalization", report)
 
     def test_format_summary_highlights_circle_and_overload_labels(self):
         from tools.evaluate_gesture_templates import format_summary, summarize_predictions

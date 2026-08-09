@@ -9,3 +9,4 @@ __pycache__/
 .settings/
 *.code-workspace
 logs/
+artifacts/cv_evaluation/*/misses.jsonl
