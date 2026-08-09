@@ -2,7 +2,7 @@
 
 实施依据：`docs/next_optimization_plan.md`
 
-当前阶段：Phase 0、Phase 1、Phase 2 已完成，Phase 3 待开始
+当前阶段：Phase 0 至 Phase 4 已完成，Phase 5（服务器发送解耦）进行中
 
 最近更新：2026-08-10
 
@@ -271,8 +271,48 @@ OK
 - 回退可将 pipeline 版本切回 v1、恢复预览 heuristic 入口和旧 DTW；模板包、
   日志 Schema、协议和战斗逻辑均未发生不兼容变更。
 
+## Phase 3：循环 DTW 与 Schema v2 代表模板包
+
+- DTW 结果新增 Top-1/Top-2、独立距离、归一化 margin、ambiguous、prototype ID、
+  algorithm version、最佳循环 shift 和 cyclic-used 标记；
+- 仅对通过闭合门的 Stupefy 运行 32 个起点位移；反向序列默认关闭且写入 manifest；
+- Incendio、Glacius、Lumos、Overload 继续使用普通方向型 DTW；
+- `models/gesture_templates_shadow_v2.json` 由 k-medoids 选择可追踪 medoid，包含来源
+  sample/session、每法术阈值、margin 阈值、聚类摘要和 outlier；这不是监督模型；
+- runtime 同时记录正式结果与循环 Shadow；`CV_CYCLIC_STUPEFY_PRIMARY=False`，正式
+  施法、旧模板包、服务器协议和战斗逻辑均未改变。
+
+实现提交：
+
+- `338d79e feat: add cyclic Stupefy template shadow`
+- `ff1c6e6 test: isolate cyclic templates by session fold`
+
+## Phase 4：评价与晋升结论
+
+正式产物：
+
+- `artifacts/cv_evaluation/phase4_grouped_cyclic_shadow_ff1c6e6/manifest.json`
+- `artifacts/cv_evaluation/phase4_grouped_cyclic_shadow_ff1c6e6/metrics.json`
+- `artifacts/cv_evaluation/phase4_grouped_cyclic_shadow_ff1c6e6/report.md`
+- `artifacts/cv_evaluation/phase4_grouped_cyclic_shadow_ff1c6e6/confusion_matrix.csv`
+
+开发集重代入结果仅作诊断：循环候选 Stupefy Recall 为 9/11（81.8%），Macro-F1
+95.7%，错误接受率 2.6%，但 p95 为 49.22ms，超过 `<10ms` 预算。它不能作为晋升
+证据，因为 v2 模板包来自同一批开发轨迹。
+
+严格 session-grouped 评价会在每个训练 fold 内重新选择 medoid 和校准阈值，禁止
+测试 session 进入模板包。结果为明确的 `unavailable`：11 条 Stupefy 轨迹集中在
+少数 session，fold 3 的训练侧不足 3 条，无法覆盖全部测试样本。当前也没有 locked、
+独立 user 或独立 device 语料。因此 Phase 4 的正确结论是：
+
+- 不晋升循环候选，保持 Shadow 与 `CV_CYCLIC_STUPEFY_PRIMARY=False`；
+- 不根据重代入高分继续调参；
+- 需要补采分散到多个独立 session 的 Stupefy 轨迹后重新评价；
+- 即便数据门槛满足，仍需把最终分类 p95 优化到 10ms 内并通过人工冒烟。
+
+完整回归：`python -m unittest discover -s tests -q`，492 tests，OK；compileall 通过。
+
 ## 后续阶段
 
-Phase 3 将结构化模板 Top-1/Top-2、margin、ambiguous 和 prototype ID，并只对
-通过闭合门的 Stupefy 候选运行循环位移 DTW。实现仍先进入 Shadow；同时需要
-控制循环比较的计算量，使最终 fused p95 达到 `<10ms` 目标。
+Phase 5 开始实现服务器固定 Tick 与 WebSocket 发送解耦。识别候选继续留在 Shadow，
+后续服务器工作不得借机改动玩法、协议语义或客户端本地 CV 架构。

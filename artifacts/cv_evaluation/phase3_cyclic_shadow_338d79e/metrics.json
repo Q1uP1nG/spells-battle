@@ -1,0 +1,5698 @@
+{
+  "total": 77,
+  "split": {
+    "mode": "session_grouped_cv",
+    "fold_count": 5,
+    "folds": [
+      {
+        "fold": 0,
+        "groups": [
+          "session_id:session_20260616_202356"
+        ],
+        "train_samples": 50,
+        "test_samples": 27,
+        "train_labels": {
+          "circle": 10,
+          "glacius": 10,
+          "incendio": 10,
+          "lumos": 10,
+          "overload": 10
+        },
+        "test_labels": {
+          "circle": 1,
+          "glacius": 2,
+          "incendio": 18,
+          "lumos": 4,
+          "overload": 2
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 1,
+        "groups": [
+          "session_id:session_20260619_095544"
+        ],
+        "train_samples": 58,
+        "test_samples": 19,
+        "train_labels": {
+          "circle": 11,
+          "glacius": 3,
+          "incendio": 27,
+          "lumos": 5,
+          "overload": 12
+        },
+        "test_labels": {
+          "glacius": 9,
+          "incendio": 1,
+          "lumos": 9
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 2,
+        "groups": [
+          "session_id:legacy"
+        ],
+        "train_samples": 66,
+        "test_samples": 11,
+        "train_labels": {
+          "circle": 11,
+          "glacius": 11,
+          "incendio": 28,
+          "lumos": 14,
+          "overload": 2
+        },
+        "test_labels": {
+          "glacius": 1,
+          "overload": 10
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 3,
+        "groups": [
+          "session_id:session_20260620_143012"
+        ],
+        "train_samples": 67,
+        "test_samples": 10,
+        "train_labels": {
+          "circle": 1,
+          "glacius": 12,
+          "incendio": 28,
+          "lumos": 14,
+          "overload": 12
+        },
+        "test_labels": {
+          "circle": 10
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 4,
+        "groups": [
+          "session_id:session_20260618_142338",
+          "session_id:session_20260618_142517",
+          "session_id:session_20260618_143729",
+          "session_id:session_20260619_104434"
+        ],
+        "train_samples": 67,
+        "test_samples": 10,
+        "train_labels": {
+          "circle": 11,
+          "glacius": 12,
+          "incendio": 19,
+          "lumos": 13,
+          "overload": 12
+        },
+        "test_labels": {
+          "incendio": 9,
+          "lumos": 1
+        },
+        "missing_train_labels": []
+      }
+    ]
+  },
+  "dataset_partition": "development",
+  "comparison": {
+    "logged_primary": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "current_heuristic": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "normalized_heuristic_shadow": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "logged_shadow": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "real_template": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "data_template": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "fused": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "hybrid_1_0_0_2": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    },
+    "grouped_template": {
+      "accuracy_delta": 0.0,
+      "macro_f1_delta": 0.0,
+      "rejection_rate_delta": 0.0,
+      "error_acceptance_rate_delta": 0.0
+    }
+  },
+  "methods": {
+    "logged_primary": {
+      "correct": 43,
+      "total": 77,
+      "accuracy": 0.5584415584415584,
+      "macro": {
+        "precision": 0.8952380952380953,
+        "recall": 0.6424242424242423,
+        "f1": 0.7095492742551566
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 0.8333333333333334,
+          "f1": 0.9090909090909091,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 1.0,
+          "recall": 0.21428571428571427,
+          "f1": 0.35294117647058826,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 0.7857142857142857,
+          "recall": 0.7857142857142857,
+          "f1": 0.7857142857142857,
+          "support": 14
+        },
+        "overload": {
+          "precision": 0.8333333333333334,
+          "recall": 0.8333333333333334,
+          "f1": 0.8333333333333334,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 0.8571428571428571,
+          "recall": 0.5454545454545454,
+          "f1": 0.6666666666666665,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.36363636363636365,
+      "error_acceptance_rate": 0.07792207792207792,
+      "by_label": {
+        "circle": {
+          "correct": 6,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 10,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 6,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 11,
+          "total": 14
+        },
+        "overload": {
+          "correct": 10,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 6,
+          "overload": 2,
+          "null": 2,
+          "lumos": 1
+        },
+        "glacius": {
+          "glacius": 10,
+          "null": 2
+        },
+        "incendio": {
+          "lumos": 2,
+          "null": 20,
+          "incendio": 6
+        },
+        "lumos": {
+          "lumos": 11,
+          "null": 3
+        },
+        "overload": {
+          "overload": 10,
+          "null": 1,
+          "stupefy": 1
+        }
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 3,
+            "total": 20,
+            "accuracy": 0.15,
+            "macro": {
+              "precision": 0.3,
+              "recall": 0.08636363636363636,
+              "f1": 0.1282051282051282
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.18181818181818182,
+                "f1": 0.3076923076923077,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333,
+                "support": 4
+              },
+              "overload": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.75,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 0,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 0,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 2,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 1,
+                "total": 4
+              },
+              "overload": {
+                "correct": 0,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "lumos": 1
+              },
+              "glacius": {
+                "null": 2
+              },
+              "incendio": {
+                "incendio": 2,
+                "null": 9
+              },
+              "lumos": {
+                "null": 3,
+                "lumos": 1
+              },
+              "overload": {
+                "null": 1,
+                "stupefy": 1
+              }
+            }
+          },
+          "unknown": {
+            "correct": 39,
+            "total": 50,
+            "accuracy": 0.78,
+            "macro": {
+              "precision": 0.9333333333333333,
+              "recall": 0.78,
+              "f1": 0.8059440559440558
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.3,
+                "f1": 0.4615384615384615,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 10
+              },
+              "overload": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.14,
+            "error_acceptance_rate": 0.08,
+            "by_label": {
+              "circle": {
+                "correct": 6,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 3,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 10,
+                "total": 10
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 6,
+                "overload": 2,
+                "null": 2
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "lumos": 2,
+                "null": 5,
+                "incendio": 3
+              },
+              "lumos": {
+                "lumos": 10
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "wand": {
+            "correct": 1,
+            "total": 7,
+            "accuracy": 0.14285714285714285,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.14285714285714285,
+              "f1": 0.25
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.14285714285714285,
+                "f1": 0.25,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.8571428571428571,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "null": 6,
+                "incendio": 1
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 11,
+            "total": 11,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 4,
+            "total": 27,
+            "accuracy": 0.14814814814814814,
+            "macro": {
+              "precision": 0.3,
+              "recall": 0.08333333333333333,
+              "f1": 0.12380952380952381
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.16666666666666666,
+                "f1": 0.2857142857142857,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333,
+                "support": 4
+              },
+              "overload": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.7777777777777778,
+            "error_acceptance_rate": 0.07407407407407407,
+            "by_label": {
+              "circle": {
+                "correct": 0,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 0,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 3,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 1,
+                "total": 4
+              },
+              "overload": {
+                "correct": 0,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "lumos": 1
+              },
+              "glacius": {
+                "null": 2
+              },
+              "incendio": {
+                "null": 15,
+                "incendio": 3
+              },
+              "lumos": {
+                "null": 3,
+                "lumos": 1
+              },
+              "overload": {
+                "null": 1,
+                "stupefy": 1
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 1.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 3,
+            "total": 7,
+            "accuracy": 0.42857142857142855,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.42857142857142855,
+              "f1": 0.6
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.42857142857142855,
+                "f1": 0.6,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.42857142857142855,
+            "error_acceptance_rate": 0.14285714285714285,
+            "by_label": {
+              "incendio": {
+                "correct": 3,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 3,
+                "null": 3,
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 1.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "null": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 18,
+            "total": 19,
+            "accuracy": 0.9473684210526315,
+            "macro": {
+              "precision": 0.6666666666666666,
+              "recall": 0.6666666666666666,
+              "f1": 0.6666666666666666
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.05263157894736842,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "null": 1
+              },
+              "lumos": {
+                "lumos": 9
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 6,
+            "total": 10,
+            "accuracy": 0.6,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.6,
+              "f1": 0.7499999999999999
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.2,
+            "error_acceptance_rate": 0.2,
+            "by_label": {
+              "circle": {
+                "correct": 6,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 6,
+                "overload": 2,
+                "null": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "current_heuristic": {
+      "correct": 45,
+      "total": 77,
+      "accuracy": 0.5844155844155844,
+      "macro": {
+        "precision": 0.9245098039215687,
+        "recall": 0.6867965367965368,
+        "f1": 0.7327278085898776
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 0.8333333333333334,
+          "f1": 0.9090909090909091,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 1.0,
+          "recall": 0.17857142857142858,
+          "f1": 0.30303030303030304,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 0.9166666666666666,
+          "recall": 0.7857142857142857,
+          "f1": 0.8461538461538461,
+          "support": 14
+        },
+        "overload": {
+          "precision": 0.7058823529411765,
+          "recall": 1.0,
+          "f1": 0.8275862068965517,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 0.6363636363636364,
+          "f1": 0.7777777777777778,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.33766233766233766,
+      "error_acceptance_rate": 0.07792207792207792,
+      "by_label": {
+        "circle": {
+          "correct": 7,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 10,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 5,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 11,
+          "total": 14
+        },
+        "overload": {
+          "correct": 12,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 7,
+          "overload": 2,
+          "null": 2
+        },
+        "glacius": {
+          "glacius": 10,
+          "null": 2
+        },
+        "incendio": {
+          "lumos": 1,
+          "null": 19,
+          "incendio": 5,
+          "overload": 3
+        },
+        "lumos": {
+          "lumos": 11,
+          "null": 3
+        },
+        "overload": {
+          "overload": 12
+        }
+      },
+      "latency_ms": {
+        "count": 77,
+        "p50": 0.17330003902316093,
+        "p95": 0.37357999244704865,
+        "min": 0.001300009898841381,
+        "max": 0.7260999991558492
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 6,
+            "total": 20,
+            "accuracy": 0.3,
+            "macro": {
+              "precision": 0.8,
+              "recall": 0.48636363636363633,
+              "f1": 0.5415384615384615
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.18181818181818182,
+                "f1": 0.3076923076923077,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.7,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 0,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 2,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 1,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "null": 2
+              },
+              "incendio": {
+                "incendio": 2,
+                "null": 9
+              },
+              "lumos": {
+                "null": 3,
+                "lumos": 1
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "unknown": {
+            "correct": 38,
+            "total": 50,
+            "accuracy": 0.76,
+            "macro": {
+              "precision": 0.9151515151515153,
+              "recall": 0.76,
+              "f1": 0.7671428571428571
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.2,
+                "f1": 0.33333333333333337,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 0.9090909090909091,
+                "recall": 1.0,
+                "f1": 0.9523809523809523,
+                "support": 10
+              },
+              "overload": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.12,
+            "error_acceptance_rate": 0.12,
+            "by_label": {
+              "circle": {
+                "correct": 6,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 2,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 10,
+                "total": 10
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 6,
+                "overload": 2,
+                "null": 2
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "lumos": 1,
+                "null": 4,
+                "incendio": 2,
+                "overload": 3
+              },
+              "lumos": {
+                "lumos": 10
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "wand": {
+            "correct": 1,
+            "total": 7,
+            "accuracy": 0.14285714285714285,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.14285714285714285,
+              "f1": 0.25
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.14285714285714285,
+                "f1": 0.25,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.8571428571428571,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "null": 6,
+                "incendio": 1
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 11,
+            "total": 11,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 7,
+            "total": 27,
+            "accuracy": 0.25925925925925924,
+            "macro": {
+              "precision": 0.8,
+              "recall": 0.4833333333333333,
+              "f1": 0.5371428571428571
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.16666666666666666,
+                "f1": 0.2857142857142857,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.7407407407407407,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 0,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 3,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 1,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "null": 2
+              },
+              "incendio": {
+                "null": 15,
+                "incendio": 3
+              },
+              "lumos": {
+                "null": 3,
+                "lumos": 1
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 1.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 2,
+            "total": 7,
+            "accuracy": 0.2857142857142857,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.2857142857142857,
+              "f1": 0.4444444444444445
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.2857142857142857,
+                "f1": 0.4444444444444445,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.2857142857142857,
+            "error_acceptance_rate": 0.42857142857142855,
+            "by_label": {
+              "incendio": {
+                "correct": 2,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 2,
+                "null": 2,
+                "overload": 3
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 1.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "null": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 18,
+            "total": 19,
+            "accuracy": 0.9473684210526315,
+            "macro": {
+              "precision": 0.6666666666666666,
+              "recall": 0.6666666666666666,
+              "f1": 0.6666666666666666
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.05263157894736842,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "null": 1
+              },
+              "lumos": {
+                "lumos": 9
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 6,
+            "total": 10,
+            "accuracy": 0.6,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.6,
+              "f1": 0.7499999999999999
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.2,
+            "error_acceptance_rate": 0.2,
+            "by_label": {
+              "circle": {
+                "correct": 6,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 6,
+                "overload": 2,
+                "null": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "normalized_heuristic_shadow": {
+      "correct": 47,
+      "total": 77,
+      "accuracy": 0.6103896103896104,
+      "macro": {
+        "precision": 0.9285714285714285,
+        "recall": 0.7082251082251082,
+        "f1": 0.7581074793351008
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 0.9166666666666666,
+          "f1": 0.9565217391304348,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 1.0,
+          "recall": 0.21428571428571427,
+          "f1": 0.35294117647058826,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 0.8571428571428571,
+          "recall": 0.8571428571428571,
+          "f1": 0.8571428571428571,
+          "support": 14
+        },
+        "overload": {
+          "precision": 0.7857142857142857,
+          "recall": 0.9166666666666666,
+          "f1": 0.8461538461538461,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 0.6363636363636364,
+          "f1": 0.7777777777777778,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.3246753246753247,
+      "error_acceptance_rate": 0.06493506493506493,
+      "by_label": {
+        "circle": {
+          "correct": 7,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 11,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 6,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 12,
+          "total": 14
+        },
+        "overload": {
+          "correct": 11,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 7,
+          "overload": 2,
+          "null": 1,
+          "lumos": 1
+        },
+        "glacius": {
+          "glacius": 11,
+          "null": 1
+        },
+        "incendio": {
+          "lumos": 1,
+          "null": 20,
+          "incendio": 6,
+          "overload": 1
+        },
+        "lumos": {
+          "lumos": 12,
+          "null": 2
+        },
+        "overload": {
+          "overload": 11,
+          "null": 1
+        }
+      },
+      "latency_ms": {
+        "count": 77,
+        "p50": 0.34879997838288546,
+        "p95": 0.7192200166173283,
+        "min": 0.0887999776750803,
+        "max": 1.1375999893061817
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 7,
+            "total": 20,
+            "accuracy": 0.35,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.5363636363636364,
+              "f1": 0.6615384615384615
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.18181818181818182,
+                "f1": 0.3076923076923077,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.65,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 1,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 2,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 2,
+                "total": 4
+              },
+              "overload": {
+                "correct": 1,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "null": 1,
+                "glacius": 1
+              },
+              "incendio": {
+                "incendio": 2,
+                "null": 9
+              },
+              "lumos": {
+                "null": 2,
+                "lumos": 2
+              },
+              "overload": {
+                "null": 1,
+                "overload": 1
+              }
+            }
+          },
+          "unknown": {
+            "correct": 39,
+            "total": 50,
+            "accuracy": 0.78,
+            "macro": {
+              "precision": 0.9205128205128205,
+              "recall": 0.78,
+              "f1": 0.798038917604135
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.3,
+                "f1": 0.4615384615384615,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 10
+              },
+              "overload": {
+                "precision": 0.7692307692307693,
+                "recall": 1.0,
+                "f1": 0.8695652173913044,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.12,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 6,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 3,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 10,
+                "total": 10
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 6,
+                "overload": 2,
+                "null": 1,
+                "lumos": 1
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "lumos": 1,
+                "null": 5,
+                "incendio": 3,
+                "overload": 1
+              },
+              "lumos": {
+                "lumos": 10
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "wand": {
+            "correct": 1,
+            "total": 7,
+            "accuracy": 0.14285714285714285,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.14285714285714285,
+              "f1": 0.25
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.14285714285714285,
+                "f1": 0.25,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.8571428571428571,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "null": 6,
+                "incendio": 1
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 11,
+            "total": 11,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 8,
+            "total": 27,
+            "accuracy": 0.2962962962962963,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.5333333333333333,
+              "f1": 0.6571428571428571
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.16666666666666666,
+                "f1": 0.2857142857142857,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.7037037037037037,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 1,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 3,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 2,
+                "total": 4
+              },
+              "overload": {
+                "correct": 1,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "null": 1,
+                "glacius": 1
+              },
+              "incendio": {
+                "null": 15,
+                "incendio": 3
+              },
+              "lumos": {
+                "null": 2,
+                "lumos": 2
+              },
+              "overload": {
+                "null": 1,
+                "overload": 1
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 1.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 3,
+            "total": 7,
+            "accuracy": 0.42857142857142855,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.42857142857142855,
+              "f1": 0.6
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.42857142857142855,
+                "f1": 0.6,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.42857142857142855,
+            "error_acceptance_rate": 0.14285714285714285,
+            "by_label": {
+              "incendio": {
+                "correct": 3,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 3,
+                "null": 3,
+                "overload": 1
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 1.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "null": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 18,
+            "total": 19,
+            "accuracy": 0.9473684210526315,
+            "macro": {
+              "precision": 0.6666666666666666,
+              "recall": 0.6666666666666666,
+              "f1": 0.6666666666666666
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.05263157894736842,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "null": 1
+              },
+              "lumos": {
+                "lumos": 9
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 6,
+            "total": 10,
+            "accuracy": 0.6,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.6,
+              "f1": 0.7499999999999999
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.1,
+            "error_acceptance_rate": 0.3,
+            "by_label": {
+              "circle": {
+                "correct": 6,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 6,
+                "overload": 2,
+                "null": 1,
+                "lumos": 1
+              }
+            }
+          }
+        }
+      },
+      "normalization_sources": {
+        "trajectory_span_fallback": 77
+      }
+    },
+    "logged_shadow": {
+      "correct": 16,
+      "total": 19,
+      "accuracy": 0.8421052631578947,
+      "macro": {
+        "precision": 0.4818181818181818,
+        "recall": 0.6,
+        "f1": 0.5238095238095238
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "support": 2
+        },
+        "incendio": {
+          "precision": 0.9090909090909091,
+          "recall": 1.0,
+          "f1": 0.9523809523809523,
+          "support": 10
+        },
+        "lumos": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "overload": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 2
+        },
+        "stupefy": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        }
+      },
+      "rejection_rate": 0.0,
+      "error_acceptance_rate": 0.15789473684210525,
+      "by_label": {
+        "circle": {
+          "correct": 0,
+          "total": 1
+        },
+        "glacius": {
+          "correct": 2,
+          "total": 2
+        },
+        "incendio": {
+          "correct": 10,
+          "total": 10
+        },
+        "lumos": {
+          "correct": 4,
+          "total": 4
+        },
+        "overload": {
+          "correct": 0,
+          "total": 2
+        }
+      },
+      "confusion": {
+        "circle": {
+          "incendio": 1
+        },
+        "glacius": {
+          "glacius": 2
+        },
+        "incendio": {
+          "incendio": 10
+        },
+        "lumos": {
+          "lumos": 4
+        },
+        "overload": {
+          "glacius": 2
+        }
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 16,
+            "total": 19,
+            "accuracy": 0.8421052631578947,
+            "macro": {
+              "precision": 0.4818181818181818,
+              "recall": 0.6,
+              "f1": 0.5238095238095238
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 0.9090909090909091,
+                "recall": 1.0,
+                "f1": 0.9523809523809523,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.15789473684210525,
+            "by_label": {
+              "circle": {
+                "correct": 0,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 10,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 0,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "incendio": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 10
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "glacius": 2
+              }
+            }
+          }
+        },
+        "session_id": {
+          "session_20260616_202356": {
+            "correct": 16,
+            "total": 19,
+            "accuracy": 0.8421052631578947,
+            "macro": {
+              "precision": 0.4818181818181818,
+              "recall": 0.6,
+              "f1": 0.5238095238095238
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 0.9090909090909091,
+                "recall": 1.0,
+                "f1": 0.9523809523809523,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.15789473684210525,
+            "by_label": {
+              "circle": {
+                "correct": 0,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 10,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 0,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "incendio": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 10
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "glacius": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "real_template": {
+      "correct": 70,
+      "total": 77,
+      "accuracy": 0.9090909090909091,
+      "macro": {
+        "precision": 0.9207142857142857,
+        "recall": 0.9023809523809524,
+        "f1": 0.8975271512113618
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.888888888888889,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 0.9285714285714286,
+          "recall": 0.9285714285714286,
+          "f1": 0.9285714285714286,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 0.875,
+          "recall": 1.0,
+          "f1": 0.9333333333333333,
+          "support": 14
+        },
+        "overload": {
+          "precision": 1.0,
+          "recall": 0.5833333333333334,
+          "f1": 0.7368421052631579,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.0,
+      "error_acceptance_rate": 0.09090909090909091,
+      "by_label": {
+        "circle": {
+          "correct": 11,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 12,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 26,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 14,
+          "total": 14
+        },
+        "overload": {
+          "correct": 7,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 11
+        },
+        "glacius": {
+          "glacius": 12
+        },
+        "incendio": {
+          "lumos": 2,
+          "incendio": 26
+        },
+        "lumos": {
+          "lumos": 14
+        },
+        "overload": {
+          "overload": 7,
+          "incendio": 2,
+          "glacius": 3
+        }
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 18,
+            "total": 20,
+            "accuracy": 0.9,
+            "macro": {
+              "precision": 0.8933333333333333,
+              "recall": 0.8818181818181818,
+              "f1": 0.8615873015873016
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.9090909090909091,
+                "f1": 0.9523809523809523,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 10,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 1,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 10,
+                "lumos": 1
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 1,
+                "glacius": 1
+              }
+            }
+          },
+          "unknown": {
+            "correct": 45,
+            "total": 50,
+            "accuracy": 0.9,
+            "macro": {
+              "precision": 0.9121212121212121,
+              "recall": 0.9,
+              "f1": 0.8937229437229437
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 0.8181818181818182,
+                "recall": 0.9,
+                "f1": 0.8571428571428572,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 0.9090909090909091,
+                "recall": 1.0,
+                "f1": 0.9523809523809523,
+                "support": 10
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 10,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 9,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 10,
+                "total": 10
+              },
+              "overload": {
+                "correct": 6,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 10
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "lumos": 1,
+                "incendio": 9
+              },
+              "lumos": {
+                "lumos": 10
+              },
+              "overload": {
+                "overload": 6,
+                "incendio": 2,
+                "glacius": 2
+              }
+            }
+          },
+          "wand": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 7,
+            "total": 11,
+            "accuracy": 0.6363636363636364,
+            "macro": {
+              "precision": 0.6666666666666666,
+              "recall": 0.8,
+              "f1": 0.625
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.3333333333333333,
+                "recall": 1.0,
+                "f1": 0.5,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.36363636363636365,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 6,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 6,
+                "incendio": 2,
+                "glacius": 2
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 25,
+            "total": 27,
+            "accuracy": 0.9259259259259259,
+            "macro": {
+              "precision": 0.8933333333333333,
+              "recall": 0.888888888888889,
+              "f1": 0.8653968253968254
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.9444444444444444,
+                "f1": 0.9714285714285714,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.07407407407407407,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 17,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 1,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 17,
+                "lumos": 1
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 1,
+                "glacius": 1
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 1.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 19,
+            "total": 19,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "incendio": 1
+              },
+              "lumos": {
+                "lumos": 9
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 10,
+            "total": 10,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 10
+              }
+            }
+          }
+        }
+      },
+      "margin": {
+        "count": 77,
+        "p50": 0.10080972779542208,
+        "p95": 0.21051059663295746,
+        "min": 0.002611607313156128,
+        "max": 0.21052357943790412
+      }
+    },
+    "data_template": {
+      "correct": 75,
+      "total": 77,
+      "accuracy": 0.974025974025974,
+      "macro": {
+        "precision": 0.9866666666666667,
+        "recall": 0.9690476190476189,
+        "f1": 0.9770003886945415
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 0.9333333333333333,
+          "recall": 1.0,
+          "f1": 0.9655172413793104,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 1.0,
+          "recall": 0.9285714285714286,
+          "f1": 0.962962962962963,
+          "support": 14
+        },
+        "overload": {
+          "precision": 1.0,
+          "recall": 0.9166666666666666,
+          "f1": 0.9565217391304348,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.0,
+      "error_acceptance_rate": 0.025974025974025976,
+      "by_label": {
+        "circle": {
+          "correct": 11,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 12,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 28,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 13,
+          "total": 14
+        },
+        "overload": {
+          "correct": 11,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 11
+        },
+        "glacius": {
+          "glacius": 12
+        },
+        "incendio": {
+          "incendio": 28
+        },
+        "lumos": {
+          "lumos": 13,
+          "incendio": 1
+        },
+        "overload": {
+          "overload": 11,
+          "incendio": 1
+        }
+      },
+      "latency_ms": {
+        "count": 77,
+        "p50": 9.420999966096133,
+        "p95": 11.354460008442402,
+        "min": 6.510999985039234,
+        "max": 12.247500009834766
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 20,
+            "total": 20,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 11,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 11
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "unknown": {
+            "correct": 48,
+            "total": 50,
+            "accuracy": 0.96,
+            "macro": {
+              "precision": 0.9666666666666666,
+              "recall": 0.96,
+              "f1": 0.9607655502392344
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.04,
+            "by_label": {
+              "circle": {
+                "correct": 10,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 10,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 10
+              },
+              "overload": {
+                "correct": 9,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 10
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "incendio": 10
+              },
+              "lumos": {
+                "lumos": 9,
+                "incendio": 1
+              },
+              "overload": {
+                "overload": 9,
+                "incendio": 1
+              }
+            }
+          },
+          "wand": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 10,
+            "total": 11,
+            "accuracy": 0.9090909090909091,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.95,
+              "f1": 0.9736842105263158
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.09090909090909091,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 9,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 9,
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 27,
+            "total": 27,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 18,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 18
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 18,
+            "total": 19,
+            "accuracy": 0.9473684210526315,
+            "macro": {
+              "precision": 0.8333333333333334,
+              "recall": 0.9629629629629629,
+              "f1": 0.869281045751634
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.8888888888888888,
+                "f1": 0.9411764705882353,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.05263157894736842,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 8,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "incendio": 1
+              },
+              "lumos": {
+                "lumos": 8,
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 10,
+            "total": 10,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    "cyclic_template_shadow": {
+      "correct": 73,
+      "total": 77,
+      "accuracy": 0.948051948051948,
+      "macro": {
+        "precision": 0.9866666666666667,
+        "recall": 0.9326839826839827,
+        "f1": 0.9570003886945416
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 0.9333333333333333,
+          "recall": 1.0,
+          "f1": 0.9655172413793104,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 1.0,
+          "recall": 0.9285714285714286,
+          "f1": 0.962962962962963,
+          "support": 14
+        },
+        "overload": {
+          "precision": 1.0,
+          "recall": 0.9166666666666666,
+          "f1": 0.9565217391304348,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 0.8181818181818182,
+          "f1": 0.9,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.025974025974025976,
+      "error_acceptance_rate": 0.025974025974025976,
+      "by_label": {
+        "circle": {
+          "correct": 9,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 12,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 28,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 13,
+          "total": 14
+        },
+        "overload": {
+          "correct": 11,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 9,
+          "null": 2
+        },
+        "glacius": {
+          "glacius": 12
+        },
+        "incendio": {
+          "incendio": 28
+        },
+        "lumos": {
+          "lumos": 13,
+          "incendio": 1
+        },
+        "overload": {
+          "overload": 11,
+          "incendio": 1
+        }
+      },
+      "latency_ms": {
+        "count": 77,
+        "p50": 0.48729998525232077,
+        "p95": 46.45002004690468,
+        "min": 0.25539996568113565,
+        "max": 49.358799995388836
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 20,
+            "total": 20,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 11,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 11
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "unknown": {
+            "correct": 46,
+            "total": 50,
+            "accuracy": 0.92,
+            "macro": {
+              "precision": 0.9666666666666666,
+              "recall": 0.9199999999999999,
+              "f1": 0.9385433280170122
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.8,
+                "f1": 0.888888888888889,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.04,
+            "error_acceptance_rate": 0.04,
+            "by_label": {
+              "circle": {
+                "correct": 8,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 10,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 10
+              },
+              "overload": {
+                "correct": 9,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 8,
+                "null": 2
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "incendio": 10
+              },
+              "lumos": {
+                "lumos": 9,
+                "incendio": 1
+              },
+              "overload": {
+                "overload": 9,
+                "incendio": 1
+              }
+            }
+          },
+          "wand": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 10,
+            "total": 11,
+            "accuracy": 0.9090909090909091,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.95,
+              "f1": 0.9736842105263158
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.09090909090909091,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 9,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 9,
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 27,
+            "total": 27,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 18,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 18
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 18,
+            "total": 19,
+            "accuracy": 0.9473684210526315,
+            "macro": {
+              "precision": 0.8333333333333334,
+              "recall": 0.9629629629629629,
+              "f1": 0.869281045751634
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 0.8888888888888888,
+                "f1": 0.9411764705882353,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.05263157894736842,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 8,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "incendio": 1
+              },
+              "lumos": {
+                "lumos": 8,
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 8,
+            "total": 10,
+            "accuracy": 0.8,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.8,
+              "f1": 0.888888888888889
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.8,
+                "f1": 0.888888888888889,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.2,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 8,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 8,
+                "null": 2
+              }
+            }
+          }
+        }
+      },
+      "diagnostics": {
+        "ambiguous": 2,
+        "closure_gate_passed": 11,
+        "cyclic_top1": 9
+      }
+    },
+    "fused": {
+      "correct": 73,
+      "total": 77,
+      "accuracy": 0.948051948051948,
+      "macro": {
+        "precision": 0.96,
+        "recall": 0.9493506493506494,
+        "f1": 0.9503703703703703
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 1.0,
+          "recall": 0.9285714285714286,
+          "f1": 0.962962962962963,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 14
+        },
+        "overload": {
+          "precision": 0.8,
+          "recall": 1.0,
+          "f1": 0.888888888888889,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 0.8181818181818182,
+          "f1": 0.9,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.012987012987012988,
+      "error_acceptance_rate": 0.03896103896103896,
+      "by_label": {
+        "circle": {
+          "correct": 9,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 12,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 26,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 14,
+          "total": 14
+        },
+        "overload": {
+          "correct": 12,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 9,
+          "overload": 1,
+          "null": 1
+        },
+        "glacius": {
+          "glacius": 12
+        },
+        "incendio": {
+          "incendio": 26,
+          "overload": 2
+        },
+        "lumos": {
+          "lumos": 14
+        },
+        "overload": {
+          "overload": 12
+        }
+      },
+      "latency_ms": {
+        "count": 77,
+        "p50": 9.68230003491044,
+        "p95": 12.025339994579554,
+        "min": 6.501600029878318,
+        "max": 13.152399973478168
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 20,
+            "total": 20,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 11,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 11
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "unknown": {
+            "correct": 46,
+            "total": 50,
+            "accuracy": 0.92,
+            "macro": {
+              "precision": 0.9538461538461538,
+              "recall": 0.9199999999999999,
+              "f1": 0.9294685990338165
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.8,
+                "f1": 0.888888888888889,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "overload": {
+                "precision": 0.7692307692307693,
+                "recall": 1.0,
+                "f1": 0.8695652173913044,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.8,
+                "f1": 0.888888888888889,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.02,
+            "error_acceptance_rate": 0.06,
+            "by_label": {
+              "circle": {
+                "correct": 8,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 8,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 10,
+                "total": 10
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 8,
+                "overload": 1,
+                "null": 1
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "incendio": 8,
+                "overload": 2
+              },
+              "lumos": {
+                "lumos": 10
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "wand": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 11,
+            "total": 11,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 27,
+            "total": 27,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 18,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 18
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 5,
+            "total": 7,
+            "accuracy": 0.7142857142857143,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.7142857142857143,
+              "f1": 0.8333333333333333
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.7142857142857143,
+                "f1": 0.8333333333333333,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.2857142857142857,
+            "by_label": {
+              "incendio": {
+                "correct": 5,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 5,
+                "overload": 2
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 19,
+            "total": 19,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "incendio": 1
+              },
+              "lumos": {
+                "lumos": 9
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 8,
+            "total": 10,
+            "accuracy": 0.8,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.8,
+              "f1": 0.888888888888889
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.8,
+                "f1": 0.888888888888889,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.1,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 8,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 8,
+                "overload": 1,
+                "null": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "hybrid_1_0_0_2": {
+      "correct": 71,
+      "total": 77,
+      "accuracy": 0.922077922077922,
+      "macro": {
+        "precision": 0.925,
+        "recall": 0.9461038961038961,
+        "f1": 0.9289635854341736
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 1.0,
+          "recall": 0.8214285714285714,
+          "f1": 0.9019607843137255,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 0.875,
+          "recall": 1.0,
+          "f1": 0.9333333333333333,
+          "support": 14
+        },
+        "overload": {
+          "precision": 0.75,
+          "recall": 1.0,
+          "f1": 0.8571428571428571,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 1.0,
+          "recall": 0.9090909090909091,
+          "f1": 0.9523809523809523,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.0,
+      "error_acceptance_rate": 0.07792207792207792,
+      "by_label": {
+        "circle": {
+          "correct": 10,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 12,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 23,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 14,
+          "total": 14
+        },
+        "overload": {
+          "correct": 12,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 10,
+          "overload": 1
+        },
+        "glacius": {
+          "glacius": 12
+        },
+        "incendio": {
+          "lumos": 2,
+          "incendio": 23,
+          "overload": 3
+        },
+        "lumos": {
+          "lumos": 14
+        },
+        "overload": {
+          "overload": 12
+        }
+      },
+      "breakdowns": {
+        "input_mode": {
+          "finger": {
+            "correct": 19,
+            "total": 20,
+            "accuracy": 0.95,
+            "macro": {
+              "precision": 0.96,
+              "recall": 0.9818181818181818,
+              "f1": 0.9682539682539681
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.9090909090909091,
+                "f1": 0.9523809523809523,
+                "support": 11
+              },
+              "lumos": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.05,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 10,
+                "total": 11
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 10,
+                "lumos": 1
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "unknown": {
+            "correct": 45,
+            "total": 50,
+            "accuracy": 0.9,
+            "macro": {
+              "precision": 0.9246753246753248,
+              "recall": 0.9,
+              "f1": 0.8966165413533835
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 10
+              },
+              "lumos": {
+                "precision": 0.9090909090909091,
+                "recall": 1.0,
+                "f1": 0.9523809523809523,
+                "support": 10
+              },
+              "overload": {
+                "precision": 0.7142857142857143,
+                "recall": 1.0,
+                "f1": 0.8333333333333333,
+                "support": 10
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 9,
+                "total": 10
+              },
+              "glacius": {
+                "correct": 10,
+                "total": 10
+              },
+              "incendio": {
+                "correct": 6,
+                "total": 10
+              },
+              "lumos": {
+                "correct": 10,
+                "total": 10
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 9,
+                "overload": 1
+              },
+              "glacius": {
+                "glacius": 10
+              },
+              "incendio": {
+                "lumos": 1,
+                "incendio": 6,
+                "overload": 3
+              },
+              "lumos": {
+                "lumos": 10
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "wand": {
+            "correct": 7,
+            "total": 7,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 7,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 7
+              }
+            }
+          }
+        },
+        "session_id": {
+          "legacy": {
+            "correct": 11,
+            "total": 11,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 1,
+                "total": 1
+              },
+              "overload": {
+                "correct": 10,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 1
+              },
+              "overload": {
+                "overload": 10
+              }
+            }
+          },
+          "session_20260616_202356": {
+            "correct": 26,
+            "total": 27,
+            "accuracy": 0.9629629629629629,
+            "macro": {
+              "precision": 0.96,
+              "recall": 0.9888888888888889,
+              "f1": 0.9720634920634922
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.9444444444444444,
+                "f1": 0.9714285714285714,
+                "support": 18
+              },
+              "lumos": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4
+              },
+              "overload": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2
+              },
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.037037037037037035,
+            "by_label": {
+              "circle": {
+                "correct": 1,
+                "total": 1
+              },
+              "glacius": {
+                "correct": 2,
+                "total": 2
+              },
+              "incendio": {
+                "correct": 17,
+                "total": 18
+              },
+              "lumos": {
+                "correct": 4,
+                "total": 4
+              },
+              "overload": {
+                "correct": 2,
+                "total": 2
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 1
+              },
+              "glacius": {
+                "glacius": 2
+              },
+              "incendio": {
+                "incendio": 17,
+                "lumos": 1
+              },
+              "lumos": {
+                "lumos": 4
+              },
+              "overload": {
+                "overload": 2
+              }
+            }
+          },
+          "session_20260618_142338": {
+            "correct": 0,
+            "total": 1,
+            "accuracy": 0.0,
+            "macro": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 1.0,
+            "by_label": {
+              "incendio": {
+                "correct": 0,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260618_142517": {
+            "correct": 4,
+            "total": 7,
+            "accuracy": 0.5714285714285714,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.5714285714285714,
+              "f1": 0.7272727272727273
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 0.5714285714285714,
+                "f1": 0.7272727272727273,
+                "support": 7
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.42857142857142855,
+            "by_label": {
+              "incendio": {
+                "correct": 4,
+                "total": 7
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 4,
+                "overload": 3
+              }
+            }
+          },
+          "session_20260618_143729": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "incendio": {
+                "incendio": 1
+              }
+            }
+          },
+          "session_20260619_095544": {
+            "correct": 19,
+            "total": 19,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "glacius": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              },
+              "incendio": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              },
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 9
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "glacius": {
+                "correct": 9,
+                "total": 9
+              },
+              "incendio": {
+                "correct": 1,
+                "total": 1
+              },
+              "lumos": {
+                "correct": 9,
+                "total": 9
+              }
+            },
+            "confusion": {
+              "glacius": {
+                "glacius": 9
+              },
+              "incendio": {
+                "incendio": 1
+              },
+              "lumos": {
+                "lumos": 9
+              }
+            }
+          },
+          "session_20260619_104434": {
+            "correct": 1,
+            "total": 1,
+            "accuracy": 1.0,
+            "macro": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "per_spell": {
+              "lumos": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 1
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.0,
+            "by_label": {
+              "lumos": {
+                "correct": 1,
+                "total": 1
+              }
+            },
+            "confusion": {
+              "lumos": {
+                "lumos": 1
+              }
+            }
+          },
+          "session_20260620_143012": {
+            "correct": 9,
+            "total": 10,
+            "accuracy": 0.9,
+            "macro": {
+              "precision": 1.0,
+              "recall": 0.9,
+              "f1": 0.9473684210526316
+            },
+            "per_spell": {
+              "stupefy": {
+                "precision": 1.0,
+                "recall": 0.9,
+                "f1": 0.9473684210526316,
+                "support": 10
+              }
+            },
+            "rejection_rate": 0.0,
+            "error_acceptance_rate": 0.1,
+            "by_label": {
+              "circle": {
+                "correct": 9,
+                "total": 10
+              }
+            },
+            "confusion": {
+              "circle": {
+                "stupefy": 9,
+                "overload": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "grouped_template": {
+      "correct": 41,
+      "total": 77,
+      "accuracy": 0.5324675324675324,
+      "macro": {
+        "precision": 0.5883838383838385,
+        "recall": 0.5616883116883117,
+        "f1": 0.5308173734610123
+      },
+      "per_spell": {
+        "glacius": {
+          "precision": 0.6666666666666666,
+          "recall": 1.0,
+          "f1": 0.8,
+          "support": 12
+        },
+        "incendio": {
+          "precision": 0.6666666666666666,
+          "recall": 0.35714285714285715,
+          "f1": 0.46511627906976744,
+          "support": 28
+        },
+        "lumos": {
+          "precision": 0.7222222222222222,
+          "recall": 0.9285714285714286,
+          "f1": 0.8125000000000001,
+          "support": 14
+        },
+        "overload": {
+          "precision": 0.13636363636363635,
+          "recall": 0.25,
+          "f1": 0.1764705882352941,
+          "support": 12
+        },
+        "stupefy": {
+          "precision": 0.75,
+          "recall": 0.2727272727272727,
+          "f1": 0.39999999999999997,
+          "support": 11
+        }
+      },
+      "rejection_rate": 0.0,
+      "error_acceptance_rate": 0.4675324675324675,
+      "by_label": {
+        "circle": {
+          "correct": 3,
+          "total": 11
+        },
+        "glacius": {
+          "correct": 12,
+          "total": 12
+        },
+        "incendio": {
+          "correct": 10,
+          "total": 28
+        },
+        "lumos": {
+          "correct": 13,
+          "total": 14
+        },
+        "overload": {
+          "correct": 3,
+          "total": 12
+        }
+      },
+      "confusion": {
+        "circle": {
+          "stupefy": 3,
+          "overload": 4,
+          "lumos": 3,
+          "incendio": 1
+        },
+        "glacius": {
+          "glacius": 12
+        },
+        "incendio": {
+          "overload": 15,
+          "incendio": 10,
+          "stupefy": 1,
+          "lumos": 2
+        },
+        "lumos": {
+          "lumos": 13,
+          "incendio": 1
+        },
+        "overload": {
+          "overload": 3,
+          "glacius": 6,
+          "incendio": 3
+        }
+      },
+      "margin": {
+        "count": 77,
+        "p50": 0.060290783643722534,
+        "p95": 0.16612158939242366,
+        "min": 0.00030277669429779053,
+        "max": 0.173258937895298
+      }
+    }
+  }
+}
