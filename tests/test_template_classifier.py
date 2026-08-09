@@ -88,6 +88,27 @@ class TemplateClassifierTests(unittest.TestCase):
         )
         self.assertAlmostEqual(max_span, 1.0, delta=0.01)
 
+    def test_template_pack_can_be_loaded_from_memory_for_fold_evaluation(self):
+        from cv.template_classifier import DataTemplateClassifier, _normalize_trajectory
+
+        normalized = _normalize_trajectory(self._horizontal_right())
+        payload = {
+            "version": 2,
+            "target_point_count": 32,
+            "prototypes": {
+                "incendio": [{"prototype_id": "fold:incendio:1", "points": normalized.tolist()}],
+            },
+            "thresholds": {"incendio": 0.5},
+            "margin_thresholds": {"incendio": 0.0},
+        }
+
+        classifier = DataTemplateClassifier(template_payload=payload)
+        result = classifier.classify(self._horizontal_right(), "left")
+
+        self.assertTrue(classifier.loaded)
+        self.assertEqual(result.spell, "incendio")
+        self.assertEqual(result.matched_prototype_id, "fold:incendio:1")
+
     # ---- DTW -----------------------------------------------------------------
 
     def test_dtw_identical_trajectories_zero(self):

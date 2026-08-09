@@ -42,6 +42,7 @@ from cv.template_classifier import (
 )
 from cv.template_classifier import _dtw_distance, _normalize_trajectory, template_label_to_spell
 from tools.gesture_corpus import CanonicalCorpus, load_canonical_corpus
+from tools.train_gesture_templates import build_template_pack
 
 
 TEMPLATE_SCORE_DISTANCE = 0.35
@@ -744,6 +745,99 @@ def evaluate_grouped_template(samples, folds, distance_cache=None):
     return result, misses
 
 
+def _fold_template_payload(samples, train_indices, k=7, min_samples=8):
+    records = {label: [] for label in ("incendio", "circle", "glacius", "lumos", "overload")}
+    for sample_index in train_indices:
+        sample = samples[sample_index]
+        if sample.label not in records:
+            continue
+        records[sample.label].append({
+            "sample_id": sample.sample_id or f"fold-sample-{sample_index}",
+            "source_file": "grouped-evaluation",
+            "session_id": sample.session_id,
+            "normalized": sample.normalized,
+        })
+    pack = build_template_pack(records, k=k, min_samples=min_samples)
+    return {
+        "version": 2,
+        "target_point_count": 32,
+        "prototypes": pack["prototypes"],
+        "thresholds": pack["thresholds"],
+        "margin_thresholds": pack["margin_thresholds"],
+        "cyclic_dtw": {"spell": "stupefy", "shifts": 32, "allow_reverse": False},
+    }
+
+
+def evaluate_grouped_cyclic_template(
+    samples,
+    folds,
+    distance_cache=None,
+    *,
+    k=7,
+    min_samples=3,
+):
+    """Evaluate the Stupefy-only overlay with a new template pack per training fold."""
+    distance_cache = distance_cache if distance_cache is not None else {}
+    pairs = []
+    misses = []
+    timings = []
+    diagnostics = Counter()
+    for fold in folds:
+        payload = _fold_template_payload(
+            samples,
+            fold["train_indices"],
+            k=k,
+            min_samples=min_samples,
+        )
+        classifier = DataTemplateClassifier(
+            template_payload=payload,
+            enable_cyclic_stupefy=True,
+            reject_ambiguous=True,
+            cyclic_stupefy_only=True,
+        )
+        if "stupefy" not in classifier.spells:
+            raise EvaluationDataError(
+                f"fold {fold['fold']} has too few Stupefy training samples for cyclic evaluation"
+            )
+        for sample_index in fold["test_indices"]:
+            baseline = classify_real_template(
+                samples,
+                sample_index,
+                distance_cache,
+                candidate_indices=fold["train_indices"],
+            )
+            started = perf_counter()
+            candidate = classifier.classify(samples[sample_index].points, "left")
+            timings.append((perf_counter() - started) * 1000.0)
+            baseline_prediction = template_label_to_spell(baseline["spell"])
+            prediction = candidate.spell if candidate.cyclic_used else baseline_prediction
+            if candidate.cyclic_used:
+                diagnostics["cyclic_top1"] += 1
+            if candidate.ambiguous:
+                diagnostics["ambiguous"] += 1
+            gate = (candidate.features or {}).get("closure_gate", {}) if isinstance(candidate.features, dict) else {}
+            if gate.get("passed"):
+                diagnostics["closure_gate_passed"] += 1
+            sample = samples[sample_index]
+            pairs.append((sample.label, prediction))
+            if prediction != template_label_to_spell(sample.label):
+                misses.append({
+                    "sample_index": sample.index,
+                    "sample_id": sample.sample_id,
+                    "label": sample.label,
+                    "method": "grouped_cyclic_template_shadow",
+                    "prediction": prediction,
+                    "fold": fold["fold"],
+                    "cyclic_reason": candidate.reason,
+                    "points": len(sample.points),
+                })
+    result = summarize_predictions(pairs)
+    result["latency_ms"] = _distribution(timings)
+    result["diagnostics"] = dict(sorted(diagnostics.items()))
+    result["fold_template_policy"] = {"k": k, "min_samples": min_samples}
+    return result, misses
+
+
 def format_summary(summary: dict) -> str:
     lines = [f"Total labeled samples: {summary['total']}", ""]
     method_order = [
@@ -753,6 +847,7 @@ def format_summary(summary: dict) -> str:
         "logged_shadow",
         "real_template",
         "grouped_template",
+        "grouped_cyclic_template_shadow",
         "data_template",
         "cyclic_template_shadow",
         "fused",
@@ -767,6 +862,8 @@ def format_summary(summary: dict) -> str:
             f"rejection={result['rejection_rate']:.1%} "
             f"error_acceptance={result['error_acceptance_rate']:.1%}"
         )
+        if result.get("status"):
+            lines.append(f"  status={result['status']} reason={result.get('reason', '')}")
         latency = result.get("latency_ms") or {}
         if latency.get("p50") is not None:
             lines.append(
@@ -801,6 +898,8 @@ def format_summary(summary: dict) -> str:
             for method in [
                 "current_heuristic",
                 "normalized_heuristic_shadow",
+                "grouped_template",
+                "grouped_cyclic_template_shadow",
                 "data_template",
                 "cyclic_template_shadow",
                 "fused",
@@ -892,6 +991,24 @@ def evaluate_canonical_corpus(
         summary["grouped_template"] = grouped
         summary["methods"]["grouped_template"] = grouped
         summary["misses"].extend(misses)
+        try:
+            grouped_cyclic, cyclic_misses = evaluate_grouped_cyclic_template(
+                samples,
+                folds,
+                distance_cache=distance_cache,
+            )
+        except EvaluationDataError as exc:
+            grouped_cyclic = summarize_predictions([])
+            grouped_cyclic.update({
+                "status": "unavailable",
+                "reason": str(exc),
+                "latency_ms": _distribution([]),
+                "diagnostics": {},
+            })
+            cyclic_misses = []
+        summary["grouped_cyclic_template_shadow"] = grouped_cyclic
+        summary["methods"]["grouped_cyclic_template_shadow"] = grouped_cyclic
+        summary["misses"].extend(cyclic_misses)
         summary["split"] = {
             "mode": split_mode,
             "fold_count": len(folds),

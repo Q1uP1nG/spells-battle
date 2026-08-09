@@ -304,6 +304,7 @@ class DataTemplateClassifier:
         self,
         template_path=None,
         *,
+        template_payload: Optional[dict] = None,
         enable_cyclic_stupefy: bool = False,
         reject_ambiguous: bool = False,
         allow_cyclic_reverse: Optional[bool] = None,
@@ -318,6 +319,7 @@ class DataTemplateClassifier:
         self.reject_ambiguous = bool(reject_ambiguous)
         self.cyclic_stupefy_only = bool(cyclic_stupefy_only)
         self.allow_cyclic_reverse = allow_cyclic_reverse
+        self.template_payload = template_payload
         self.template_pack_version = None
         self.loaded = False
         self.load_error = ""
@@ -328,14 +330,19 @@ class DataTemplateClassifier:
         return tuple(self._prototypes.keys())
 
     def _load(self):
-        try:
-            with open(self.template_path, "r", encoding="utf-8") as handle:
-                payload = json.load(handle)
-        except FileNotFoundError:
-            self.load_error = "template pack missing"
-            return
-        except (OSError, ValueError, TypeError) as exc:
-            self.load_error = f"template pack invalid: {exc}"
+        payload = self.template_payload
+        if payload is None:
+            try:
+                with open(self.template_path, "r", encoding="utf-8") as handle:
+                    payload = json.load(handle)
+            except FileNotFoundError:
+                self.load_error = "template pack missing"
+                return
+            except (OSError, ValueError, TypeError) as exc:
+                self.load_error = f"template pack invalid: {exc}"
+                return
+        if not isinstance(payload, dict):
+            self.load_error = "template pack invalid: root must be an object"
             return
 
         target_count = int(payload.get("target_point_count") or TARGET_POINT_COUNT)

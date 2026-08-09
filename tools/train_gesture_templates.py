@@ -192,6 +192,8 @@ def _percentile(values, percentile, default=0.0):
 
 def _calibrate_pack(prototype_arrays, buckets):
     """Calibrate per-spell acceptance and normalized-ratio margin on development data."""
+    if not prototype_arrays:
+        return {}, {}, []
     own_distances = {spell: [] for spell in prototype_arrays}
     other_distances = {spell: [] for spell in prototype_arrays}
     sample_rows = []

@@ -274,6 +274,52 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(seen_test_indices, set(range(len(samples))))
         self.assertTrue(all("train_indices" in fold for fold in folds))
 
+    def test_grouped_cyclic_evaluation_builds_each_pack_from_training_fold(self):
+        import math
+        from tools.evaluate_gesture_templates import (
+            build_grouped_folds,
+            build_samples,
+            evaluate_grouped_cyclic_template,
+        )
+
+        def circle(offset):
+            return [
+                [300 + 70 * math.cos(2 * math.pi * i / 32) + offset,
+                 240 + 70 * math.sin(2 * math.pi * i / 32)]
+                for i in range(33)
+            ]
+
+        entries = []
+        for session, offset in (("session-a", 0), ("session-b", 5)):
+            entries.extend([
+                {
+                    "sample_id": f"{session}-circle",
+                    "session_id": session,
+                    "label": "circle",
+                    "points": circle(offset),
+                },
+                {
+                    "sample_id": f"{session}-incendio",
+                    "session_id": session,
+                    "label": "incendio",
+                    "points": [[offset, 100], [100 + offset, 100], [200 + offset, 100]],
+                },
+            ])
+        samples = build_samples(entries)
+        folds = build_grouped_folds(samples, "session_grouped_cv", fold_count=2)
+
+        result, misses = evaluate_grouped_cyclic_template(
+            samples,
+            folds,
+            k=1,
+            min_samples=1,
+        )
+
+        self.assertEqual(result["total"], 4)
+        self.assertEqual(result["fold_template_policy"], {"k": 1, "min_samples": 1})
+        self.assertEqual(result["latency_ms"]["count"], 4)
+        self.assertIsInstance(misses, list)
+
     def test_user_grouped_folds_fail_when_anonymous_user_metadata_is_missing(self):
         from tools.evaluate_gesture_templates import (
             EvaluationDataError,
@@ -458,6 +504,10 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(metrics["total"], 2)
         self.assertIn("macro", metrics["methods"]["fused"])
         self.assertIn("per_spell", metrics["methods"]["fused"])
+        self.assertEqual(
+            metrics["methods"]["grouped_cyclic_template_shadow"]["status"],
+            "unavailable",
+        )
         self.assertEqual(manifest["corpus_audit"]["canonical_samples"], 2)
         self.assertEqual(manifest["corpus_audit"]["discarded_reviews"], 1)
         self.assertEqual(manifest["corpus_version"], manifest["corpus_audit"]["corpus_version"])
