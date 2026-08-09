@@ -678,6 +678,21 @@ def format_summary(summary: dict) -> str:
         result = summary[method]
         total = max(result["total"], 1)
         lines.append(f"{method}: {result['correct']}/{result['total']} ({result['correct'] / total:.1%})")
+        lines.append(
+            f"  macro_f1={result['macro']['f1']:.3f} "
+            f"rejection={result['rejection_rate']:.1%} "
+            f"error_acceptance={result['error_acceptance_rate']:.1%}"
+        )
+        latency = result.get("latency_ms") or {}
+        if latency.get("p50") is not None:
+            lines.append(
+                f"  latency_ms p50={latency['p50']:.3f} p95={latency['p95']:.3f}"
+            )
+        margin = result.get("margin") or {}
+        if margin.get("p50") is not None:
+            lines.append(
+                f"  margin p50={margin['p50']:.3f} p95={margin['p95']:.3f}"
+            )
         for label, data in sorted(result["by_label"].items()):
             label_total = max(data["total"], 1)
             lines.append(f"  {label}: {data['correct']}/{data['total']} ({data['correct'] / label_total:.1%})")
@@ -779,6 +794,16 @@ def evaluate_canonical_corpus(
                     "groups": fold["groups"],
                     "train_samples": len(fold["train_indices"]),
                     "test_samples": len(fold["test_indices"]),
+                    "train_labels": dict(sorted(Counter(
+                        samples[index].label for index in fold["train_indices"]
+                    ).items())),
+                    "test_labels": dict(sorted(Counter(
+                        samples[index].label for index in fold["test_indices"]
+                    ).items())),
+                    "missing_train_labels": sorted(
+                        {sample.label for sample in samples}
+                        - {samples[index].label for index in fold["train_indices"]}
+                    ),
                 }
                 for fold in folds
             ],
@@ -801,6 +826,19 @@ def _template_pack_manifest(path=Path("models/gesture_templates.json")):
         "sha256": hashlib.sha256(raw).hexdigest(),
     })
     return result
+
+
+def _deterministic_metrics_version(summary):
+    payload = {
+        "total": summary["total"],
+        "dataset_partition": summary.get("dataset_partition"),
+        "split": summary.get("split"),
+        "methods": json.loads(json.dumps(summary["methods"])),
+    }
+    for method in payload["methods"].values():
+        method.pop("latency_ms", None)
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return f"sha256:{hashlib.sha256(encoded.encode('ascii')).hexdigest()}"
 
 
 def write_evaluation_artifacts(output_dir, summary, corpus, command):
@@ -827,6 +865,7 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
         },
         "template_pack": _template_pack_manifest(),
         "corpus_version": corpus.audit.get("corpus_version"),
+        "deterministic_metrics_version": _deterministic_metrics_version(summary),
         "split": summary.get("split"),
         "dataset_partition": summary.get("dataset_partition"),
         "command": list(command),

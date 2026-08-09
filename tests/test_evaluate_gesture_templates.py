@@ -157,6 +157,25 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
 
         self.assertAlmostEqual(comparison["candidate"]["error_acceptance_rate_delta"], 0.5)
 
+    def test_deterministic_metrics_version_ignores_runtime_latency_noise(self):
+        from tools.evaluate_gesture_templates import (
+            _deterministic_metrics_version,
+            summarize_predictions,
+        )
+
+        method = summarize_predictions([("incendio", "incendio")])
+        method["latency_ms"] = {"count": 1, "p50": 1.0, "p95": 1.0}
+        summary = {
+            "total": 1,
+            "dataset_partition": "development",
+            "split": None,
+            "methods": {"candidate": method},
+        }
+        first = _deterministic_metrics_version(summary)
+        method["latency_ms"]["p95"] = 999.0
+
+        self.assertEqual(first, _deterministic_metrics_version(summary))
+
     def test_session_grouped_folds_have_no_group_or_sample_leakage(self):
         from tools.evaluate_gesture_templates import build_grouped_folds, build_samples
 
@@ -187,6 +206,7 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
             seen_test_indices.update(fold["test_indices"])
             seen_test_sessions.update(test_sessions)
         self.assertEqual(seen_test_indices, set(range(len(samples))))
+        self.assertTrue(all("train_indices" in fold for fold in folds))
 
     def test_user_grouped_folds_fail_when_anonymous_user_metadata_is_missing(self):
         from tools.evaluate_gesture_templates import (
