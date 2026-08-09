@@ -2,7 +2,7 @@
 
 实施依据：`docs/next_optimization_plan.md`
 
-当前阶段：Phase 0、Phase 1 已完成，Phase 2 待开始
+当前阶段：Phase 0、Phase 1、Phase 2 已完成，Phase 3 待开始
 
 最近更新：2026-08-10
 
@@ -190,8 +190,89 @@ OK
   达到正式启用门槛；
 - 回退时可继续读取 v1 日志，并关闭匿名环境标签；旧模板包和正式分类路径不受影响。
 
+## Phase 2：尺度归一化 Shadow 与统一 pipeline
+
+### 完成内容
+
+- pipeline 版本升级为 `gesture-pipeline-v2-normalized-shadow`；
+- 新增 `GestureClassificationContext`，预览、最终分类和离线回放共享
+  `palm_scale`、分辨率、FPS、输入模式和用途字段；
+- 新增 `normalized-heuristic-shadow-v1`，只产生诊断结果，不改变 primary 或施法；
+- 尺度优先使用 `palm_scale`；缺失时依次使用画面对角线和轨迹跨度 fallback；
+- fallback 来源、缩放系数、基于实际 FPS 的时长和归一化速度写入 Shadow 日志；
+- 归一化只做正比例缩放，不平移方向含义、不旋转轨迹；
+- 预览和停止后的最终判定统一调用同一个 pipeline 对象和版本，预览不再绕过
+  pipeline 直接调用裸 heuristic；
+- `CVTrack` 记录最后 pipeline 版本和 Shadow 候选，Schema v2 日志记录 primary、
+  normalized Shadow、agreement 和 pipeline 版本；
+- Mode 4 Bank 与审核链保留 pipeline 版本，但仍不会把 Shadow 预测当成人工标签；
+- DTW 动态规划改为按反对角线和 prototype batch 精确向量化；随机轨迹测试逐格
+  对照旧 recurrence，距离和正式分类结果保持一致。
+
+### Phase 2 评价
+
+实现提交：`ce7d7aa feat: evaluate normalized gesture features in shadow mode`
+
+运行命令：
+
+```powershell
+python tools/evaluate_gesture_templates.py `
+  --bank models/gesture_template_bank.json `
+  --reviewed models/gesture_reviewed_samples.jsonl `
+  --split-mode session_grouped_cv `
+  --folds 5 `
+  --partition development `
+  --baseline-metrics artifacts/cv_evaluation/phase1_session_grouped_b35783b/metrics.json `
+  --output-dir artifacts/cv_evaluation/phase2_normalized_shadow_ce7d7aa
+```
+
+主要结果：
+
+| 方法 | Accuracy | Macro-F1 | 拒识率 | 错误接受率 | p95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| current heuristic | 58.4% | 73.3% | 33.8% | 7.8% | 0.44ms |
+| normalized heuristic Shadow | 61.0% | 75.8% | 32.5% | 6.5% | 0.63ms |
+| current template pack | 97.4% | 97.7% | 0.0% | 2.6% | 10.68ms |
+| current fused | 94.8% | 95.0% | 1.3% | 3.9% | 12.08ms |
+| session-grouped representative templates | 53.2% | 53.1% | 0.0% | 46.8% | 未采集 |
+
+与 Phase 1 对比，current heuristic、template、fused 和 grouped template 的 Accuracy、
+Macro-F1、拒识率、错误接受率全部零变化。DTW 等价加速使 template p95 从
+465.81ms 降到 10.68ms，fused p95 从 503.86ms 降到 12.08ms；提升明显，但
+最终 fused 仍未达到 `<10ms` 的晋升目标。
+
+normalized Shadow 在当前样本上多正确 2 条，但其 Stupefy Recall 仍为 7/11
+（63.6%，与 baseline 相同），Overload Recall 从 12/12 降到 11/12。更重要的是，
+77 条 legacy 轨迹全部缺少 palm scale 和分辨率，只能使用
+`trajectory_span_fallback`。因此该结果只能说明 fallback 回归表现，不能证明
+palm-scale 归一化的跨距离、跨分辨率或跨设备效果。
+
+正式产物：
+
+- `artifacts/cv_evaluation/phase2_normalized_shadow_ce7d7aa/manifest.json`
+- `artifacts/cv_evaluation/phase2_normalized_shadow_ce7d7aa/metrics.json`
+- `artifacts/cv_evaluation/phase2_normalized_shadow_ce7d7aa/report.md`
+- `artifacts/cv_evaluation/phase2_normalized_shadow_ce7d7aa/confusion_matrix.csv`
+- `misses.jsonl` 可由命令重建，默认不提交。
+
+### 测试、晋升与回退
+
+```text
+python -m compileall -q main.py cv game network server tools
+python -m unittest discover -s tests -v
+Ran 481 tests in 12.405s
+OK
+```
+
+- 测试覆盖不同分辨率/手掌尺度等价、fallback 标记、方向保持、FPS 时长、
+  Shadow 不影响 primary、预览/最终 pipeline 版本一致、日志元数据和批量 DTW
+  与旧 recurrence 等价；
+- normalized Shadow 未达到按法术晋升条件，继续保持 Shadow；
+- 回退可将 pipeline 版本切回 v1、恢复预览 heuristic 入口和旧 DTW；模板包、
+  日志 Schema、协议和战斗逻辑均未发生不兼容变更。
+
 ## 后续阶段
 
-Phase 2 将在不改变正式施法结果的前提下运行尺度归一化 Shadow，并统一预览与
-最终识别 pipeline。重点是先给缺少 `palm_scale` 的 legacy 数据建立明确 fallback，
-复用同一分类入口和版本信息，同时避免让当前约 500ms 的模板路径进入逐帧预览。
+Phase 3 将结构化模板 Top-1/Top-2、margin、ambiguous 和 prototype ID，并只对
+通过闭合门的 Stupefy 候选运行循环位移 DTW。实现仍先进入 Shadow；同时需要
+控制循环比较的计算量，使最终 fused p95 达到 `<10ms` 目标。

@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "created_at": "2026-08-09T16:33:12.966559+00:00",
+  "git_commit": "ce7d7aa81228c462acd37e8d01419c492de7b622",
+  "classifier_versions": {
+    "heuristic": "source@ce7d7aa81228c462acd37e8d01419c492de7b622",
+    "fused": "source@ce7d7aa81228c462acd37e8d01419c492de7b622",
+    "normalized_heuristic_shadow": "normalized-heuristic-shadow-v1",
+    "real_template": "leave-one-out-dtw-v1"
+  },
+  "template_pack": {
+    "path": "models/gesture_templates.json",
+    "available": true,
+    "schema_version": 1,
+    "created": "2026-06-25T02:59:54.890478+00:00",
+    "sha256": "97cb5a1438e0757a76eeb2f1db8e5f79f6c2dac4071592dddc7827da7eb0af9d"
+  },
+  "corpus_version": "sha256:e1568e2da0c5bf8f51a1d69a0624cfa8c7a78f54ba05555eb89faabb29fa40d3",
+  "deterministic_metrics_version": "sha256:121514ad1815a910459bdf8a0745ba1262dc6bdf9bfca64bfe8784cb6e047d1b",
+  "split": {
+    "mode": "session_grouped_cv",
+    "fold_count": 5,
+    "folds": [
+      {
+        "fold": 0,
+        "groups": [
+          "session_id:session_20260616_202356"
+        ],
+        "train_samples": 50,
+        "test_samples": 27,
+        "train_labels": {
+          "circle": 10,
+          "glacius": 10,
+          "incendio": 10,
+          "lumos": 10,
+          "overload": 10
+        },
+        "test_labels": {
+          "circle": 1,
+          "glacius": 2,
+          "incendio": 18,
+          "lumos": 4,
+          "overload": 2
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 1,
+        "groups": [
+          "session_id:session_20260619_095544"
+        ],
+        "train_samples": 58,
+        "test_samples": 19,
+        "train_labels": {
+          "circle": 11,
+          "glacius": 3,
+          "incendio": 27,
+          "lumos": 5,
+          "overload": 12
+        },
+        "test_labels": {
+          "glacius": 9,
+          "incendio": 1,
+          "lumos": 9
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 2,
+        "groups": [
+          "session_id:legacy"
+        ],
+        "train_samples": 66,
+        "test_samples": 11,
+        "train_labels": {
+          "circle": 11,
+          "glacius": 11,
+          "incendio": 28,
+          "lumos": 14,
+          "overload": 2
+        },
+        "test_labels": {
+          "glacius": 1,
+          "overload": 10
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 3,
+        "groups": [
+          "session_id:session_20260620_143012"
+        ],
+        "train_samples": 67,
+        "test_samples": 10,
+        "train_labels": {
+          "circle": 1,
+          "glacius": 12,
+          "incendio": 28,
+          "lumos": 14,
+          "overload": 12
+        },
+        "test_labels": {
+          "circle": 10
+        },
+        "missing_train_labels": []
+      },
+      {
+        "fold": 4,
+        "groups": [
+          "session_id:session_20260618_142338",
+          "session_id:session_20260618_142517",
+          "session_id:session_20260618_143729",
+          "session_id:session_20260619_104434"
+        ],
+        "train_samples": 67,
+        "test_samples": 10,
+        "train_labels": {
+          "circle": 11,
+          "glacius": 12,
+          "incendio": 19,
+          "lumos": 13,
+          "overload": 12
+        },
+        "test_labels": {
+          "incendio": 9,
+          "lumos": 1
+        },
+        "missing_train_labels": []
+      }
+    ]
+  },
+  "dataset_partition": "development",
+  "command": [
+    "tools/evaluate_gesture_templates.py",
+    "--bank",
+    "models/gesture_template_bank.json",
+    "--reviewed",
+    "models/gesture_reviewed_samples.jsonl",
+    "--split-mode",
+    "session_grouped_cv",
+    "--folds",
+    "5",
+    "--partition",
+    "development",
+    "--baseline-metrics",
+    "artifacts/cv_evaluation/phase1_session_grouped_b35783b/metrics.json",
+    "--output-dir",
+    "artifacts/cv_evaluation/phase2_normalized_shadow_ce7d7aa"
+  ],
+  "corpus_audit": {
+    "schema": 2,
+    "input_candidates": 104,
+    "canonical_samples": 77,
+    "duplicates_merged": 27,
+    "discarded_by_review": 0,
+    "label_conflicts": [],
+    "missing_source": 11,
+    "review_records": 86,
+    "latest_reviews": 86,
+    "accepted_reviews": 27,
+    "discarded_reviews": 59,
+    "corpus_version": "sha256:e1568e2da0c5bf8f51a1d69a0624cfa8c7a78f54ba05555eb89faabb29fa40d3"
+  },
+  "source_files": [
+    "models\\gesture_reviewed_samples.jsonl",
+    "models\\gesture_template_bank.json"
+  ]
+}
