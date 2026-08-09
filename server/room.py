@@ -122,8 +122,7 @@ class Room:
             raise RoomError("rate_limited", "too many cast requests")
         seat.cast_times.append(float(now))
         self.last_active_at = float(now)
-        accepted = self.session.cast(player_index, intent)
-        return accepted, self.session.drain_events()
+        return self.session.cast(player_index, intent)
 
     def request_rematch(self, player_index, now):
         if self.state != RoomState.ROUND_OVER:

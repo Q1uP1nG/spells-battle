@@ -56,6 +56,7 @@ class RemoteBattleSessionTests(unittest.TestCase):
     def test_remote_cast_is_pending_and_uses_server_bound_identity(self):
         session, client = self.make_session()
         session.player_index = 1
+        session.match_id = "match-cast"
         session.state = RemoteSessionState.RUNNING
 
         result = session.request_cast(0, "incendio", 4.0, "cv")
@@ -64,6 +65,7 @@ class RemoteBattleSessionTests(unittest.TestCase):
         self.assertEqual(client.sent[0][0], "cast")
         self.assertNotIn("player_index", client.sent[0][1])
         self.assertEqual(client.sent[0][1]["sequence"], 1)
+        self.assertEqual(client.sent[0][1]["match_id"], "match-cast")
 
     def test_snapshot_updates_render_view_without_advancing_authority(self):
         session, client = self.make_session()
@@ -92,6 +94,22 @@ class RemoteBattleSessionTests(unittest.TestCase):
         self.assertEqual(session.game.players[0].last_message, "CAST PRO")
         self.assertIn(("cast", "protego"), session.game.sound_events)
         self.assertGreater(len(session.game.particles), 0)
+
+    def test_snapshot_from_previous_match_is_ignored(self):
+        session, client = self.make_session()
+        session.match_id = "current-match"
+        initial_hp = session.game.players[0].hp
+        engine = BattleEngine()
+        engine.players[0].hp = 1.0
+        stale = snapshot_from_engine(engine, "previous-match", 99, 5.0)
+        client.messages.put(
+            {"type": "battle_snapshot", "payload": snapshot_to_payload(stale)}
+        )
+
+        session.update(now=10.0, dt=0.0)
+
+        self.assertEqual(session.game.players[0].hp, initial_hp)
+        self.assertIsNone(session.interpolator.current)
 
     def test_room_states_are_explicit(self):
         session, client = self.make_session()
@@ -129,10 +147,14 @@ class RemoteBattleSessionTests(unittest.TestCase):
 
     def test_rematch_request_is_a_session_command(self):
         session, client = self.make_session()
+        session.match_id = "match-rematch"
 
         session.request_rematch()
 
-        self.assertEqual(client.sent, [("rematch", {}, None)])
+        self.assertEqual(
+            client.sent,
+            [("rematch", {"match_id": "match-rematch"}, None)],
+        )
 
     def test_ping_updates_rtt_metric(self):
         session, client = self.make_session()

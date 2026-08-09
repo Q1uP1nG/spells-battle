@@ -55,10 +55,11 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         await self.send(self.first, "create_room", {}, "create")
         created = await self.receive_until(self.first, "room_created")
         room_code = created["payload"]["room_code"]
+        self.match_id = created["payload"]["match_id"]
         await self.send(self.second, "join_room", {"room_code": room_code}, "join")
         joined = await self.receive_until(self.second, "room_joined")
-        await self.send(self.first, "ready", {"ready": True})
-        await self.send(self.second, "ready", {"ready": True})
+        await self.send(self.first, "ready", {"ready": True, "match_id": self.match_id})
+        await self.send(self.second, "ready", {"ready": True, "match_id": self.match_id})
         first_snapshot = await self.receive_until(self.first, "battle_snapshot")
         second_snapshot = await self.receive_until(self.second, "battle_snapshot")
         return created, joined, first_snapshot, second_snapshot
@@ -96,7 +97,7 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first_snapshot["payload"], second_snapshot["payload"])
 
         intent = CastIntent("incendio", 1, 0, "keyboard")
-        payload = cast_intent_to_payload(intent)
+        payload = cast_intent_to_payload(intent, self.match_id)
         payload["player_index"] = 1
         await self.send(self.first, "cast", payload)
         event = await self.receive_until(
@@ -106,11 +107,13 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(event["payload"]["data"]["player_index"], 0)
+        self.assertEqual(event["payload"]["data"]["sequence"], 1)
+        self.assertEqual(event["payload"]["match_id"], self.match_id)
 
     async def test_duplicate_cast_is_idempotently_rejected(self):
         await self.create_join_and_ready()
         intent = CastIntent("incendio", 1, 0, "keyboard")
-        payload = cast_intent_to_payload(intent)
+        payload = cast_intent_to_payload(intent, self.match_id)
 
         await self.send(self.first, "cast", payload)
         await self.receive_until(
@@ -129,7 +132,7 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         room.session.engine.players[1].hp = 1.0
         intent = CastIntent("incendio", 1, 0, "keyboard")
 
-        await self.send(self.first, "cast", cast_intent_to_payload(intent))
+        await self.send(self.first, "cast", cast_intent_to_payload(intent, self.match_id))
         first_final = await self.receive_until(
             self.first,
             "battle_snapshot",
@@ -143,6 +146,21 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(first_final["payload"], second_final["payload"])
         self.assertEqual(first_final["payload"]["players"][1]["hp"], 0.0)
+
+    async def test_cast_from_stale_match_is_rejected_before_rule_execution(self):
+        await self.create_join_and_ready()
+        intent = CastIntent("incendio", 1, 0, "keyboard")
+
+        await self.send(
+            self.first,
+            "cast",
+            cast_intent_to_payload(intent, match_id="previous-match"),
+        )
+        error = await self.receive_until(self.first, "error")
+
+        self.assertEqual(error["payload"]["code"], "stale_match")
+        room = next(iter(self.server.rooms.rooms.values()))
+        self.assertEqual(room.session.engine.projectiles, [])
 
     async def test_heartbeat_and_reconnect_restore_the_authoritative_snapshot(self):
         created, _, _, _ = await self.create_join_and_ready()

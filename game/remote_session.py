@@ -65,13 +65,16 @@ class RemoteBattleSession:
         self.client.send("join_room", {"room_code": code})
 
     def select_character(self, character_id):
-        self.client.send("select_character", {"character_id": character_id})
+        self.client.send(
+            "select_character",
+            {"character_id": character_id, "match_id": self.match_id},
+        )
 
     def set_ready(self, ready=True):
-        self.client.send("ready", {"ready": bool(ready)})
+        self.client.send("ready", {"ready": bool(ready), "match_id": self.match_id})
 
     def request_rematch(self):
-        self.client.send("rematch", {})
+        self.client.send("rematch", {"match_id": self.match_id})
 
     def request_cast(self, player_index, spell, now, source):
         intent = CastIntent(
@@ -86,7 +89,7 @@ class RemoteBattleSession:
     def submit_cast(self, player_index, intent, now):
         if self.state != RemoteSessionState.RUNNING or self.player_index is None:
             return CastSubmission(intent, False, "NOT CONNECTED")
-        self.client.send("cast", cast_intent_to_payload(intent))
+        self.client.send("cast", cast_intent_to_payload(intent, match_id=self.match_id))
         self.game.players[self.player_index].last_message = "AWAITING SERVER"
         self.game.players[self.player_index].message_until = now + 0.8
         return CastSubmission(intent, None, "")
@@ -161,11 +164,15 @@ class RemoteBattleSession:
             return
         if message_type == "battle_snapshot":
             snapshot = snapshot_from_payload(payload)
+            if self.match_id and snapshot.match_id != self.match_id:
+                return
             if self.interpolator.push(snapshot, now):
                 self._apply_snapshot(snapshot, now)
             return
         if message_type == "battle_event":
             event = replace(event_from_payload(payload), match_time=float(now))
+            if self.match_id and event.match_id != self.match_id:
+                return
             self.game._on_event(event)
             return
         if message_type == "pong":

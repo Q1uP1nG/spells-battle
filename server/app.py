@@ -220,11 +220,13 @@ class BattleServer:
 
             room, player_index = self._bound_room(connection)
             if message_type == "select_character":
+                self._require_current_match(room, payload)
                 room.select_character(
                     player_index, self._required_text(payload, "character_id"), now
                 )
                 await self._broadcast_room_state(room)
             elif message_type == "ready":
+                self._require_current_match(room, payload)
                 if "ready" not in payload or not isinstance(payload["ready"], bool):
                     raise ProtocolError("invalid_field", "ready must be a boolean")
                 room.set_ready(player_index, payload["ready"], now)
@@ -234,11 +236,15 @@ class BattleServer:
                         room.room_code, "battle_snapshot", snapshot_to_payload(room.snapshot())
                     )
             elif message_type == "cast":
+                command_match_id = self._required_text(payload, "match_id")
+                if command_match_id != room.match_id:
+                    raise RoomError("stale_match", "cast belongs to a different match")
                 intent = cast_intent_from_payload(payload)
                 _, events = room.submit_cast(player_index, intent, now)
                 for event in events:
                     await self._broadcast(room.room_code, "battle_event", event_to_payload(event))
             elif message_type == "rematch":
+                self._require_current_match(room, payload)
                 room.request_rematch(player_index, now)
                 await self._broadcast_room_state(room)
                 if room.state.value == "RUNNING":
@@ -333,6 +339,10 @@ class BattleServer:
         if not isinstance(value, str) or not value:
             raise ProtocolError("missing_field", f"{name} must be a non-empty string")
         return value
+
+    def _require_current_match(self, room, payload):
+        if self._required_text(payload, "match_id") != room.match_id:
+            raise RoomError("stale_match", "command belongs to a different match")
 
 
 async def run_server(config=None):

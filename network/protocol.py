@@ -104,13 +104,16 @@ def decode_message(raw):
     }
 
 
-def cast_intent_to_payload(intent):
-    return {
+def cast_intent_to_payload(intent, match_id=None):
+    payload = {
         "spell": intent.spell,
         "sequence": intent.sequence,
         "client_time_ms": intent.client_time_ms,
         "source": intent.source,
     }
+    if match_id is not None:
+        payload["match_id"] = str(match_id)
+    return payload
 
 
 def cast_intent_from_payload(payload):
@@ -131,6 +134,7 @@ def event_to_payload(event):
     return {
         "event_id": int(event.event_id),
         "server_tick": int(event.server_tick),
+        "match_id": str(event.match_id),
         "kind": str(event.kind),
         "match_time": float(event.match_time),
         "data": dict(event.payload),
@@ -139,7 +143,7 @@ def event_to_payload(event):
 
 def event_from_payload(payload):
     payload = _require_mapping(payload, "event payload")
-    _required(payload, "event_id", "server_tick", "kind", "match_time", "data")
+    _required(payload, "event_id", "server_tick", "match_id", "kind", "match_time", "data")
     data = _require_mapping(payload["data"], "event data")
     try:
         return BattleEvent(
@@ -148,6 +152,7 @@ def event_from_payload(payload):
             match_time=float(payload["match_time"]),
             payload=data,
             server_tick=int(payload["server_tick"]),
+            match_id=str(payload["match_id"]),
         )
     except (TypeError, ValueError) as exc:
         raise ProtocolError("invalid_field", "invalid battle event") from exc

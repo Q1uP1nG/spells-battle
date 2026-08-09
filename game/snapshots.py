@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 
 
 def _remaining(until, now):

@@ -75,3 +75,7 @@ python -m unittest discover -s tests
 - 不做伤害/命中的客户端预测；本地只立即显示“等待服务器确认”。
 - Protego 网络输入宽限保持为 0。只有真实公网 RTT 数据证明需要时，才应把它做成服务端配置并重新评估公平性。
 - JSON/Deflate 已足够首版；未证明是瓶颈前不引入 MessagePack。
+
+当前线协议版本为 `2`。版本 2 要求回合内命令和领域事件携带
+`match_id`，并在施法接受/拒绝事件中回传原始 `sequence`，用于隔离 rematch
+前后的延迟消息和关联客户端 pending 状态。不同协议版本会被服务端明确拒绝。

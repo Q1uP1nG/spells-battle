@@ -23,14 +23,19 @@ class ProtocolTests(unittest.TestCase):
     def test_cast_command_round_trip(self):
         intent = CastIntent("stupefy", 3, 1450, "cv")
 
-        raw = encode_message("cast", cast_intent_to_payload(intent), request_id="request-3")
+        raw = encode_message(
+            "cast", cast_intent_to_payload(intent, match_id="match-3"), request_id="request-3"
+        )
         message = decode_message(raw)
 
         self.assertEqual(cast_intent_from_payload(message["payload"]), intent)
+        self.assertEqual(message["payload"]["match_id"], "match-3")
         self.assertEqual(message["request_id"], "request-3")
 
     def test_event_round_trip(self):
-        event = BattleEvent(7, "player_hit", 2.5, {"damage": 12.0}, server_tick=45)
+        event = BattleEvent(
+            7, "player_hit", 2.5, {"damage": 12.0}, server_tick=45, match_id="match-7"
+        )
 
         raw = encode_message("battle_event", event_to_payload(event))
         restored = event_from_payload(decode_message(raw)["payload"])
@@ -96,7 +101,10 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(error.exception.code, "unknown_type")
 
     def test_duplicate_json_fields_are_rejected(self):
-        raw = '{"protocol_version":1,"type":"ping","type":"pong","payload":{}}'
+        raw = (
+            f'{{"protocol_version":{PROTOCOL_VERSION},"type":"ping",'
+            '"type":"pong","payload":{}}'
+        )
 
         with self.assertRaises(ProtocolError) as error:
             decode_message(raw)

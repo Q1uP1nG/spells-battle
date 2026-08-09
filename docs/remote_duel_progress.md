@@ -517,3 +517,37 @@ through a real Alibaba Cloud `wss://` endpoint. This cannot be completed without
 ECS instance, public domain/DNS, and authorization to deploy. Follow
 `deploy/README.md` and `docs/remote_duel_runbook.md`; record the public acceptance
 results here after deployment.
+
+## Post-Phase 7 completion audit hardening
+
+Date: 2026-08-09
+
+The requirement-by-requirement audit found that battle commands and events needed
+stronger cross-round correlation before public deployment. The following protocol
+hardening was completed:
+
+- Bumped the wire protocol from version 1 to version 2.
+- Required `match_id` on cast, character selection, ready, and rematch commands.
+- Added `match_id` to every battle event.
+- Added the originating cast `sequence` to `cast_accepted` and `cast_rejected` event
+  payloads so clients can correlate authoritative acknowledgement with pending input.
+- Reject stale commands from an earlier rematch before they reach battle rules.
+- Ignore stale events and snapshots from earlier matches on the client.
+- Reset interpolation history when a new rematch ID becomes authoritative.
+
+Verification:
+
+```text
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 436 tests in 16.856s
+  OK
+
+Real log snapshot before/after the full suite
+  REAL_LOGS_UNCHANGED=True
+
+git diff --check
+  PASS
+```
