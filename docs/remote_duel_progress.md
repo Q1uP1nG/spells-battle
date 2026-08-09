@@ -674,3 +674,34 @@ The code and deployment artifacts are ready for execution. Remaining gates are
 external: build the container on the purchased ECS, open TCP/8765, run the probe
 against `ws://101.132.63.248:8765`, and complete the report's required manual camera/CV
 and two-physical-device checks.
+
+## Alibaba Cloud public endpoint acceptance
+
+Date: 2026-08-09
+
+The authoritative server was deployed to Ubuntu on Alibaba Cloud ECS at
+`ws://101.132.63.248:8765`. Because the mainland instance could not reach Docker Hub,
+the same server entry point is running from an isolated Python virtual environment
+under a dedicated `spells` user and systemd service instead of Docker. TCP/8765 is
+published through the ECS security group.
+
+Public full-round probe result:
+
+```text
+python tools/remote_duel_probe.py --url ws://101.132.63.248:8765
+  health.status=ok
+  health.rooms=0
+  health.connections=0
+  duel.ok=true
+  protocol_version=2
+  initial_server_tick=1
+  full_round=true
+  winner=0
+  elapsed_seconds=10.107
+```
+
+This verifies the public health endpoint, two real WebSocket connections, room create
+and join, ready flow, authoritative casts, a complete round, winner calculation, and
+matching final snapshots over the deployed internet endpoint. The remaining final gate
+is manual play on two physical Windows devices on different networks, including
+keyboard first and then finger/bright-wand CV, reconnect, and repeated rematches.
