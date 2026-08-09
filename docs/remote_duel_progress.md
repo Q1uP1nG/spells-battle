@@ -263,3 +263,63 @@ Real log snapshot before/after the full test suite
 
 Phase 4: implement the in-memory room state machine and local authoritative
 WebSocket server, then verify one server and two headless clients over a random port.
+
+## Phase 4 - Complete
+
+Date: 2026-08-09
+
+### Implementation summary
+
+- Added a headless asyncio WebSocket server using the current `websockets` API.
+- Added validated environment-backed server configuration for host, port, tick rate,
+  snapshot rate, reconnect/idle timeouts, message size, and cast rate limit.
+- Added six-character room codes, server-generated match IDs, two server-owned
+  seats, and unguessable reconnect tokens.
+- Added an in-memory room state machine with ready checks, authoritative running,
+  round-over, pause-on-disconnect, reconnect, expiry, and idle cleanup.
+- Added a 30 Hz configurable authoritative battle loop and configurable snapshot
+  broadcasting, with immediate event broadcast and guaranteed final snapshot.
+- Added monotonic per-seat cast sequence validation and per-seat request rate limits.
+- Ensured client-supplied `player_index` is ignored; identity always comes from the
+  WebSocket connection's bound seat.
+- Added application heartbeat request/response alongside WebSocket-level pings.
+- Added `websockets>=16.1,<17` as the only new runtime dependency.
+
+### Verification
+
+```text
+Room state-machine tests
+  Ran 5 tests
+  OK
+
+Real WebSocket two-client integration tests
+  Ran 4 tests
+  OK
+  Covered: room create/join, ready, identical snapshots, identity binding,
+  duplicate sequence rejection, completed round, heartbeat, pause and reconnect.
+
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 411 tests in 13.868s
+  OK
+
+Real log snapshot before/after the full test suite
+  REAL_LOGS_UNCHANGED=True
+```
+
+### Remaining risks
+
+- The current server is intentionally single-process and stores rooms in memory;
+  restart loses active rooms, which is acceptable for the first release.
+- Remote UI and its background network worker do not yet exist. Phase 5 connects the
+  real client without converting the existing OpenCV/UI loop to asyncio.
+- Rematch is present in the protocol vocabulary but is not wired into the room state
+  machine yet; Phase 5/7 will cover the user-facing rematch lifecycle.
+
+### Next phase
+
+Phase 5: add a queue-isolated background client, `RemoteBattleSession`, snapshot
+interpolation/presentation, and Remote Duel menu/create/join flow while retaining all
+offline modes.
