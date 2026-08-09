@@ -4,9 +4,12 @@ import argparse
 import asyncio
 from dataclasses import dataclass, field
 import logging
+import json
 
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
+from websockets.datastructures import Headers
+from websockets.http11 import Response
 
 from network.protocol import (
     ProtocolError,
@@ -65,6 +68,7 @@ class BattleServer:
             max_size=self.config.max_message_size,
             ping_interval=20,
             ping_timeout=20,
+            process_request=self._process_request,
         )
         self._tick_task = asyncio.create_task(self._tick_loop(), name="battle-server-tick")
         return self
@@ -97,6 +101,25 @@ class BattleServer:
                     await self._broadcast_room_state(room)
                 except RoomError:
                     pass
+
+    def _process_request(self, connection, request):
+        if request.path != "/health":
+            return None
+        body = json.dumps(
+            {"status": "ok", "rooms": len(self.rooms.rooms)}, separators=(",", ":")
+        ).encode("utf-8")
+        return Response(
+            200,
+            "OK",
+            Headers(
+                {
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Content-Length": str(len(body)),
+                    "Cache-Control": "no-store",
+                }
+            ),
+            body,
+        )
 
     async def _handle_message(self, connection, raw):
         request_id = None
@@ -298,7 +321,7 @@ def main():
                 "port": args.port if args.port is not None else config.port,
             }
         )
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=getattr(logging, config.log_level.upper()))
     asyncio.run(run_server(config))
 
 

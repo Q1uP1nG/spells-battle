@@ -388,3 +388,60 @@ Real log snapshot before/after the full test suite
 Phase 6: package the server for Alibaba Cloud with a health endpoint, Docker,
 Caddy/TLS reverse proxy, environment templates, restart/logging policy, and an
 operator deployment guide.
+
+## Phase 6 - Complete
+
+Date: 2026-08-09
+
+### Implementation summary
+
+- Added a JSON `/health` response on the same HTTP/WebSocket listener.
+- Added validated `SPELLS_SERVER_LOG_LEVEL` configuration.
+- Added a minimal server-only dependency set without OpenCV, MediaPipe, Pygame,
+  Pillow, camera, audio, or client rendering packages.
+- Added a Python 3.13 slim, non-root server image with an internal health check.
+- Added Docker Compose with automatic restart, service health dependency, and
+  bounded JSON log rotation.
+- Added Caddy automatic TLS/WSS termination, security headers, compression, and
+  JSON access logs. Only 443 is published; the application port remains private.
+- Added `.env.example`, `.dockerignore`, and a Chinese Alibaba Cloud deployment,
+  client configuration, operations, rollback, and troubleshooting guide.
+
+### Verification
+
+```text
+Live HTTP health endpoint plus WebSocket integration tests
+  Ran 5 tests
+  OK
+
+Deployment/configuration static tests
+  Ran 4 tests
+  OK
+
+python -m unittest discover -s tests
+  Ran 427 tests in 15.538s
+  OK
+
+Real log snapshot before/after the full test suite
+  REAL_LOGS_UNCHANGED=True
+```
+
+### Verification limitation
+
+Docker is not installed in the current Windows workspace, so `docker build` and
+`docker compose config` could not be executed here. The deployment files are covered
+by YAML/static contract tests and must be built once on a Docker-capable staging/ECS
+host before public release.
+
+### Remaining risks
+
+- A real domain, DNS record, ECS instance, and TLS certificate are external state and
+  were not provisioned from this repository task.
+- Public two-network acceptance requires deploying these files and setting
+  `SPELLS_SERVER_URL=wss://<domain>` on both clients.
+
+### Next phase
+
+Phase 7: harden malformed/slow-client behavior, add structured redacted server logs,
+perform dependency and architecture audits, consolidate runbooks, and execute the
+final regression gate.

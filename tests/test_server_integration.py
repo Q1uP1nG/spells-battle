@@ -1,4 +1,6 @@
 import asyncio
+import json
+import urllib.request
 import unittest
 
 from websockets.asyncio.client import connect
@@ -60,6 +62,18 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         first_snapshot = await self.receive_until(self.first, "battle_snapshot")
         second_snapshot = await self.receive_until(self.second, "battle_snapshot")
         return created, joined, first_snapshot, second_snapshot
+
+    async def test_health_endpoint_reports_ready_server(self):
+        def fetch_health():
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{self.server.port}/health", timeout=2
+            ) as response:
+                return response.status, json.loads(response.read())
+
+        status, payload = await asyncio.to_thread(fetch_health)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"status": "ok", "rooms": 0})
 
     async def test_two_clients_share_authoritative_identity_and_initial_snapshot(self):
         created, joined, first_snapshot, second_snapshot = await self.create_join_and_ready()

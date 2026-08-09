@@ -1,0 +1,11 @@
+.git
+.gitignore
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+logs
+assets
+docs
+tests
+Spells_Battle_Report.pdf

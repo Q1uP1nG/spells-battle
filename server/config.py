@@ -14,6 +14,7 @@ class ServerConfig:
     room_idle_timeout: float = 900.0
     max_message_size: int = 16_384
     max_casts_per_second: int = 12
+    log_level: str = "INFO"
 
     def __post_init__(self):
         if not self.host:
@@ -28,6 +29,8 @@ class ServerConfig:
             raise ValueError("timeouts must be positive")
         if self.max_message_size < 1024 or self.max_casts_per_second < 1:
             raise ValueError("server limits are invalid")
+        if self.log_level.upper() not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+            raise ValueError("log_level is invalid")
 
     @classmethod
     def from_env(cls):
@@ -40,4 +43,5 @@ class ServerConfig:
             room_idle_timeout=float(os.getenv("SPELLS_SERVER_ROOM_IDLE_TIMEOUT", "900")),
             max_message_size=int(os.getenv("SPELLS_SERVER_MAX_MESSAGE_SIZE", "16384")),
             max_casts_per_second=int(os.getenv("SPELLS_SERVER_MAX_CASTS_PER_SECOND", "12")),
+            log_level=os.getenv("SPELLS_SERVER_LOG_LEVEL", "INFO").upper(),
         )
