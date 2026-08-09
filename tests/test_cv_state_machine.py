@@ -443,6 +443,53 @@ class CVStateMachineTests(unittest.TestCase):
         self.assertEqual(event["fps_estimate"], 59.5)
         self.assertEqual(event["palm_scale"], 123.25)
 
+    def test_gesture_event_records_structured_cyclic_shadow(self):
+        from cv.controller import CVGestureController
+        from cv.gesture_pipeline import ClassificationResult, PipelineClassification
+        from models.cv_track import CVTrack
+
+        controller = object.__new__(CVGestureController)
+        controller.gesture_attempt_id = 0
+        controller.input_mode = "finger"
+        primary = ClassificationResult("overload", 0.9, "fused", "primary")
+        cyclic = ClassificationResult(
+            "stupefy",
+            0.88,
+            "cyclic_template_shadow",
+            "structured",
+            best_distance=0.08,
+            second_spell="overload",
+            second_distance=0.14,
+            margin=0.20,
+            ambiguous=False,
+            matched_prototype_id="stupefy:medoid:s1",
+            algorithm_version="data-template-dtw-v2-cyclic-stupefy",
+            best_shift=7,
+            cyclic_used=True,
+        )
+        evaluation = PipelineClassification(
+            primary=primary,
+            shadows={"cyclic_template": cyclic},
+            pipeline_version="gesture-pipeline-v2-normalized-shadow",
+        )
+
+        event = controller._gesture_log_event(
+            now=10.0,
+            side="left",
+            points=[[0, 0], [10, 10]],
+            result=primary,
+            cast_attempted=False,
+            cast_success=False,
+            debug_state="REVIEW",
+            track=CVTrack(),
+            pipeline_evaluation=evaluation,
+        )
+
+        self.assertEqual(event["cyclic_shadow"]["second_spell"], "overload")
+        self.assertEqual(event["cyclic_shadow"]["matched_prototype_id"], "stupefy:medoid:s1")
+        self.assertEqual(event["cyclic_shadow"]["best_shift"], 7)
+        self.assertTrue(event["cyclic_shadow"]["cyclic_used"])
+
     def test_describe_tracking_uses_short_hint_for_small_paths(self):
         import numpy as np
         from models.cv_track import CVTrack

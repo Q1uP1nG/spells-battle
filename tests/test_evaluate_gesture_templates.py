@@ -91,6 +91,46 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(metric["normalization_sources"]["trajectory_span_fallback"], 1)
         self.assertIn("latency_ms", metric)
 
+    def test_evaluation_reports_cyclic_shadow_diagnostics(self):
+        import numpy as np
+        from cv.template_classifier import DataTemplateClassifier, _normalize_trajectory
+        from tools.evaluate_gesture_templates import build_samples, evaluate_samples
+
+        angles = np.linspace(0, 2 * np.pi, 33)
+        circle = np.column_stack([400 + 70 * np.cos(angles), 300 + 70 * np.sin(angles)]).tolist()
+        shifted = circle[8:-1] + circle[:9]
+        with tempfile.TemporaryDirectory() as tmp:
+            template_path = Path(tmp) / "pack.json"
+            payload = {
+                "version": 2,
+                "target_point_count": 32,
+                "prototypes": {
+                    "stupefy": [{
+                        "prototype_id": "stupefy:medoid:c1",
+                        "points": _normalize_trajectory(circle).tolist(),
+                    }],
+                },
+                "thresholds": {"stupefy": 0.5},
+                "margin_thresholds": {"stupefy": 0.0},
+                "cyclic_dtw": {"allow_reverse": False},
+            }
+            template_path.write_text(json.dumps(payload), encoding="utf-8")
+            classifier = DataTemplateClassifier(
+                template_path=template_path,
+                enable_cyclic_stupefy=True,
+                reject_ambiguous=True,
+            )
+            summary = evaluate_samples(
+                build_samples([{"label": "circle", "points": shifted}]),
+                data_template_classifier=classifier,
+                cyclic_template_classifier=classifier,
+            )
+
+        metric = summary["cyclic_template_shadow"]
+        self.assertEqual(metric["correct"], 1)
+        self.assertEqual(metric["diagnostics"]["closure_gate_passed"], 1)
+        self.assertEqual(metric["diagnostics"]["cyclic_top1"], 1)
+
     def test_evaluate_samples_reports_data_template_and_fused_accuracy(self):
         from cv.gesture_pipeline import ClassificationResult
         from tools.evaluate_gesture_templates import build_samples, evaluate_samples

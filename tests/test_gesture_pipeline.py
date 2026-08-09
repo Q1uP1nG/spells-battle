@@ -152,6 +152,34 @@ class GesturePipelineTests(unittest.TestCase):
         self.assertEqual(evaluation.primary.spell, "glacius")
         self.assertEqual(evaluation.normalized_shadow.spell, "stupefy")
 
+    def test_cyclic_promotion_overlay_changes_only_stupefy_candidate(self):
+        from cv.gesture_pipeline import ClassificationResult, StupefyCyclicOverlayClassifier
+
+        class Baseline:
+            loaded = True
+
+            def classify(self, _points, _side):
+                return ClassificationResult("overload", 0.9, "baseline", "baseline")
+
+        class Candidate:
+            def __init__(self, cyclic_used):
+                self.cyclic_used = cyclic_used
+
+            def classify(self, _points, _side):
+                return ClassificationResult(
+                    "stupefy" if self.cyclic_used else None,
+                    0.88,
+                    "cyclic",
+                    "candidate",
+                    cyclic_used=self.cyclic_used,
+                )
+
+        unchanged = StupefyCyclicOverlayClassifier(Baseline(), Candidate(False)).classify([], "left")
+        promoted = StupefyCyclicOverlayClassifier(Baseline(), Candidate(True)).classify([], "left")
+
+        self.assertEqual(unchanged.spell, "overload")
+        self.assertEqual(promoted.spell, "stupefy")
+
     def test_fused_boosts_when_heuristic_and_template_agree(self):
         from cv.gesture_pipeline import ClassificationResult, FusedGestureClassifier
 

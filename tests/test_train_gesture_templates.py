@@ -46,10 +46,29 @@ class TrainGestureTemplatesTests(unittest.TestCase):
             payload = json.loads(output_path.read_text(encoding="utf-8"))
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(payload["version"], 1)
+        self.assertEqual(payload["version"], 2)
+        self.assertEqual(payload["schema_version"], 2)
         self.assertIn("incendio", payload["prototypes"])
         self.assertIn("glacius", payload["thresholds"])
         self.assertEqual(payload["source_samples"]["incendio"], 2)
+        self.assertIn("margin_thresholds", payload)
+        self.assertIn("prototype_id", payload["prototypes"]["incendio"][0])
+        self.assertEqual(payload["development_fold_summary"]["locked_samples_used"], 0)
+        self.assertFalse(payload["cyclic_dtw"]["allow_reverse"])
+
+    def test_template_pack_distance_cache_reuses_symmetric_pair(self):
+        import numpy as np
+        from unittest.mock import patch
+        import tools.train_gesture_templates as builder
+
+        first = np.asarray([[0, 0], [1, 0], [2, 0]], dtype=np.float32)
+        second = np.asarray([[0, 0], [0, 1], [0, 2]], dtype=np.float32)
+        cache = {}
+        with patch.object(builder, "_dtw_distance", wraps=builder._dtw_distance) as distance:
+            builder._cached_dtw_distance(first, second, cache)
+            builder._cached_dtw_distance(second, first, cache)
+
+        self.assertEqual(distance.call_count, 1)
 
     def test_training_script_can_train_from_template_bank(self):
         from game.cv_training import GestureTemplateBank

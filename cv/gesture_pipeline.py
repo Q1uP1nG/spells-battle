@@ -43,6 +43,15 @@ class ClassificationResult:
     method: str
     reason: str
     features: Optional[object] = None
+    best_distance: Optional[float] = None
+    second_spell: Optional[str] = None
+    second_distance: Optional[float] = None
+    margin: Optional[float] = None
+    ambiguous: bool = False
+    matched_prototype_id: Optional[str] = None
+    algorithm_version: Optional[str] = None
+    best_shift: Optional[int] = None
+    cyclic_used: bool = False
 
 
 @dataclass(frozen=True)
@@ -57,6 +66,10 @@ class PipelineClassification:
     @property
     def normalized_shadow(self) -> Optional[ClassificationResult]:
         return self.shadows.get("normalized_heuristic")
+
+    @property
+    def cyclic_shadow(self) -> Optional[ClassificationResult]:
+        return self.shadows.get("cyclic_template")
 
 
 def _positive_float(value) -> Optional[float]:
@@ -247,6 +260,22 @@ class FusedGestureClassifier:
             method="fused",
             reason=f"no match: heuristic={heuristic.reason}; template={template.reason}",
         )
+
+
+class StupefyCyclicOverlayClassifier:
+    """Per-spell promotion switch: overlay only a closed-loop Stupefy decision."""
+
+    def __init__(self, baseline, cyclic_candidate):
+        self.baseline = baseline
+        self.cyclic_candidate = cyclic_candidate
+        self.loaded = bool(getattr(baseline, "loaded", False))
+
+    def classify(self, points, side) -> ClassificationResult:
+        baseline = self.baseline.classify(points, side)
+        cyclic = self.cyclic_candidate.classify(points, side)
+        if cyclic.cyclic_used:
+            return cyclic
+        return baseline
 
 
 class GesturePipeline:

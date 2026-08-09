@@ -170,3 +170,5 @@ P2_KEYS = {
     ord("p"): "protego",
     ord("l"): "lumos",
 }
+# Cyclic Stupefy remains diagnostic until the evaluation gate is satisfied.
+CV_CYCLIC_STUPEFY_PRIMARY = False

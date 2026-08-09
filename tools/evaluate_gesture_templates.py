@@ -35,7 +35,11 @@ from cv.gesture_pipeline import (
     NORMALIZED_FEATURE_VERSION,
     NormalizedHeuristicGestureClassifier,
 )
-from cv.template_classifier import DataTemplateClassifier
+from cv.template_classifier import (
+    CYCLIC_TEMPLATE_ALGORITHM_VERSION,
+    DataTemplateClassifier,
+    DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH,
+)
 from cv.template_classifier import _dtw_distance, _normalize_trajectory, template_label_to_spell
 from tools.gesture_corpus import CanonicalCorpus, load_canonical_corpus
 
@@ -344,9 +348,25 @@ def search_hybrid_weights(
 def evaluate_samples(
     samples: list[GestureSample],
     data_template_classifier=None,
+    cyclic_template_classifier=None,
     distance_cache=None,
 ) -> dict:
     data_template_classifier = data_template_classifier or DataTemplateClassifier()
+    if cyclic_template_classifier is None:
+        if isinstance(data_template_classifier, DataTemplateClassifier):
+            cyclic_path = (
+                DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH
+                if DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH.exists()
+                else data_template_classifier.template_path
+            )
+            cyclic_template_classifier = DataTemplateClassifier(
+                template_path=cyclic_path,
+                enable_cyclic_stupefy=True,
+                reject_ambiguous=True,
+                cyclic_stupefy_only=True,
+            )
+        else:
+            cyclic_template_classifier = data_template_classifier
     fused_classifier = FusedGestureClassifier(template=data_template_classifier)
     normalized_classifier = NormalizedHeuristicGestureClassifier()
     methods = {
@@ -356,6 +376,7 @@ def evaluate_samples(
         "logged_shadow": [],
         "real_template": [],
         "data_template": [],
+        "cyclic_template_shadow": [],
         "fused": [],
         "hybrid_1_0_0_2": [],
     }
@@ -365,6 +386,7 @@ def evaluate_samples(
     timings = defaultdict(list)
     template_margins = []
     normalization_sources = Counter()
+    cyclic_diagnostics = Counter()
 
     for i, sample in enumerate(samples):
         started = perf_counter()
@@ -388,6 +410,20 @@ def evaluate_samples(
         data_template = data_template_classifier.classify(sample.points, "left")
         timings["data_template"].append((perf_counter() - started) * 1000.0)
         started = perf_counter()
+        cyclic_template = cyclic_template_classifier.classify(sample.points, "left")
+        timings["cyclic_template_shadow"].append((perf_counter() - started) * 1000.0)
+        if getattr(cyclic_template, "cyclic_used", False):
+            cyclic_diagnostics["cyclic_top1"] += 1
+        if getattr(cyclic_template, "ambiguous", False):
+            cyclic_diagnostics["ambiguous"] += 1
+        closure_gate = getattr(cyclic_template, "features", None)
+        cyclic_gate_passed = bool(
+            isinstance(closure_gate, dict)
+            and (closure_gate.get("closure_gate") or {}).get("passed")
+        )
+        if cyclic_gate_passed:
+            cyclic_diagnostics["closure_gate_passed"] += 1
+        started = perf_counter()
         fused = fused_classifier.classify(sample.points, "left")
         timings["fused"].append((perf_counter() - started) * 1000.0)
         hybrid = classify_hybrid(
@@ -402,6 +438,11 @@ def evaluate_samples(
             "normalized_heuristic_shadow": normalized_shadow.spell,
             "real_template": template_label_to_spell(template["spell"]),
             "data_template": data_template.spell,
+            "cyclic_template_shadow": (
+                cyclic_template.spell
+                if cyclic_gate_passed
+                else data_template.spell
+            ),
             "fused": fused.spell,
             "hybrid_1_0_0_2": template_label_to_spell(hybrid["spell"]),
         }
@@ -422,6 +463,7 @@ def evaluate_samples(
                     "prediction": prediction,
                     "template_top": template["top"][:3],
                     "data_template_reason": data_template.reason,
+                    "cyclic_template_reason": cyclic_template.reason,
                     "fused_reason": fused.reason,
                     "current_confidence": current_conf,
                     "normalized_shadow_reason": normalized_shadow.reason,
@@ -439,6 +481,9 @@ def evaluate_samples(
     method_summaries["real_template"]["margin"] = _distribution(template_margins)
     method_summaries["normalized_heuristic_shadow"]["normalization_sources"] = dict(
         sorted(normalization_sources.items())
+    )
+    method_summaries["cyclic_template_shadow"]["diagnostics"] = dict(
+        sorted(cyclic_diagnostics.items())
     )
     return {
         "total": len(samples),
@@ -709,6 +754,7 @@ def format_summary(summary: dict) -> str:
         "real_template",
         "grouped_template",
         "data_template",
+        "cyclic_template_shadow",
         "fused",
         "hybrid_1_0_0_2",
     ]
@@ -734,6 +780,9 @@ def format_summary(summary: dict) -> str:
         normalization_sources = result.get("normalization_sources") or {}
         if normalization_sources:
             lines.append(f"  normalization_sources={normalization_sources}")
+        diagnostics = result.get("diagnostics") or {}
+        if diagnostics:
+            lines.append(f"  diagnostics={diagnostics}")
         for label, data in sorted(result["by_label"].items()):
             label_total = max(data["total"], 1)
             lines.append(f"  {label}: {data['correct']}/{data['total']} ({data['correct'] / label_total:.1%})")
@@ -753,6 +802,7 @@ def format_summary(summary: dict) -> str:
                 "current_heuristic",
                 "normalized_heuristic_shadow",
                 "data_template",
+                "cyclic_template_shadow",
                 "fused",
                 "real_template",
             ]:
@@ -767,7 +817,13 @@ def format_summary(summary: dict) -> str:
 
     important_misses = [
         miss for miss in summary["misses"]
-        if miss["method"] in ("current_heuristic", "real_template", "data_template", "fused")
+        if miss["method"] in (
+            "current_heuristic",
+            "real_template",
+            "data_template",
+            "cyclic_template_shadow",
+            "fused",
+        )
     ]
     if important_misses:
         lines.append("")
@@ -816,6 +872,7 @@ def main(path: str) -> None:
 def evaluate_canonical_corpus(
     corpus,
     data_template_classifier=None,
+    cyclic_template_classifier=None,
     split_mode=None,
     fold_count=5,
     dataset_partition="all",
@@ -825,6 +882,7 @@ def evaluate_canonical_corpus(
     summary = evaluate_samples(
         samples,
         data_template_classifier=data_template_classifier,
+        cyclic_template_classifier=cyclic_template_classifier,
         distance_cache=distance_cache,
     )
     summary["dataset_partition"] = dataset_partition
@@ -911,9 +969,13 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
             "heuristic": f"source@{commit}",
             "fused": f"source@{commit}",
             "normalized_heuristic_shadow": NORMALIZED_FEATURE_VERSION,
+            "cyclic_template_shadow": CYCLIC_TEMPLATE_ALGORITHM_VERSION,
             "real_template": "leave-one-out-dtw-v1",
         },
         "template_pack": _template_pack_manifest(),
+        "cyclic_template_pack": _template_pack_manifest(
+            Path(summary.get("cyclic_template_pack") or DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH)
+        ),
         "corpus_version": corpus.audit.get("corpus_version"),
         "deterministic_metrics_version": _deterministic_metrics_version(summary),
         "split": summary.get("split"),
@@ -1006,6 +1068,10 @@ def cli(argv=None):
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--baseline-metrics", default=None)
     parser.add_argument(
+        "--cyclic-template-pack",
+        default=str(DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH),
+    )
+    parser.add_argument(
         "--partition",
         choices=("development", "locked", "all"),
         default="development",
@@ -1020,12 +1086,20 @@ def cli(argv=None):
         reviewed_path=args.reviewed,
     )
     try:
+        cyclic_template_classifier = DataTemplateClassifier(
+            template_path=args.cyclic_template_pack,
+            enable_cyclic_stupefy=True,
+            reject_ambiguous=True,
+            cyclic_stupefy_only=True,
+        )
         samples, summary = evaluate_canonical_corpus(
             corpus,
+            cyclic_template_classifier=cyclic_template_classifier,
             split_mode=args.split_mode,
             fold_count=args.folds,
             dataset_partition=args.partition,
         )
+        summary["cyclic_template_pack"] = args.cyclic_template_pack
     except EvaluationDataError as exc:
         print(f"Evaluation data error: {exc}", file=sys.stderr)
         return 2

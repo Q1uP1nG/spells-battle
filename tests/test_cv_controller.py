@@ -157,6 +157,8 @@ class CVControllerPalmGateTests(unittest.TestCase):
             pipeline = create_default_gesture_pipeline(data_template_path=template_path)
 
         self.assertIsInstance(pipeline.primary, FusedGestureClassifier)
+        self.assertIn("cyclic_template", pipeline.shadows)
+        self.assertTrue(pipeline.shadows["cyclic_template"].enable_cyclic_stupefy)
 
     def test_preview_and_final_use_same_pipeline_and_version(self):
         from cv.gesture_pipeline import ClassificationResult, PipelineClassification
@@ -192,6 +194,38 @@ class CVControllerPalmGateTests(unittest.TestCase):
         self.assertEqual(preview.pipeline_version, final.pipeline_version)
         self.assertEqual(preview.primary, final.primary)
         self.assertEqual([call[2] for call in controller.gesture_pipeline.calls], ["preview", "final"])
+
+    def test_cyclic_primary_requires_explicit_promotion_switch(self):
+        from cv.controller import create_default_gesture_pipeline
+        from cv.gesture_pipeline import StupefyCyclicOverlayClassifier
+        from cv.template_classifier import _normalize_trajectory
+
+        with tempfile.TemporaryDirectory() as tmp:
+            template_path = Path(tmp) / "gesture_templates.json"
+            points = [[100, 300], [180, 300], [260, 300], [340, 300]]
+            payload = {
+                "version": 2,
+                "target_point_count": 32,
+                "prototypes": {
+                    "incendio": [{
+                        "prototype_id": "inc-1",
+                        "points": _normalize_trajectory(points).tolist(),
+                    }],
+                },
+                "thresholds": {"incendio": 0.25},
+            }
+            template_path.write_text(__import__("json").dumps(payload), encoding="utf-8")
+            baseline = create_default_gesture_pipeline(
+                data_template_path=template_path,
+                use_cyclic_stupefy_primary=False,
+            )
+            promoted = create_default_gesture_pipeline(
+                data_template_path=template_path,
+                use_cyclic_stupefy_primary=True,
+            )
+
+        self.assertNotIsInstance(baseline.primary.template, StupefyCyclicOverlayClassifier)
+        self.assertIsInstance(promoted.primary.template, StupefyCyclicOverlayClassifier)
 
     def test_legacy_plain_wand_status_falls_back_to_finger(self):
         controller = self.make_controller()

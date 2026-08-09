@@ -175,6 +175,112 @@ class TemplateClassifierTests(unittest.TestCase):
         self.assertEqual(result.spell, "incendio")
         self.assertGreater(result.confidence, 0.8)
         self.assertIn("distance", result.reason)
+        self.assertIsNotNone(result.best_distance)
+        self.assertEqual(result.second_spell, "glacius")
+        self.assertIsNotNone(result.second_distance)
+        self.assertIsNotNone(result.margin)
+        self.assertEqual(result.matched_prototype_id, "incendio:legacy:0")
+        self.assertEqual(result.algorithm_version, "data-template-dtw-v2-structured")
+
+    def test_cyclic_stupefy_is_insensitive_to_circle_start_point(self):
+        from cv.template_classifier import DataTemplateClassifier, _normalize_trajectory
+
+        template_circle = self._circle(count=32)
+        query_circle = template_circle[8:-1] + template_circle[:9]
+        with tempfile.TemporaryDirectory() as tmp:
+            template_path = Path(tmp) / "gesture_templates.json"
+            payload = {
+                "version": 1,
+                "target_point_count": 32,
+                "prototypes": {
+                    "stupefy": [_normalize_trajectory(template_circle).tolist()],
+                    "incendio": [_normalize_trajectory(self._horizontal_right()).tolist()],
+                },
+                "thresholds": {"stupefy": 0.5, "incendio": 0.5},
+            }
+            template_path.write_text(__import__("json").dumps(payload), encoding="utf-8")
+            ordinary = DataTemplateClassifier(template_path=template_path).classify(query_circle, "left")
+            cyclic = DataTemplateClassifier(
+                template_path=template_path,
+                enable_cyclic_stupefy=True,
+            ).classify(query_circle, "left")
+
+        self.assertEqual(cyclic.spell, "stupefy")
+        self.assertTrue(cyclic.cyclic_used)
+        self.assertGreater(cyclic.best_shift, 0)
+        self.assertLess(cyclic.best_distance, ordinary.best_distance)
+        self.assertTrue(cyclic.features["closure_gate"]["passed"])
+
+    def test_open_directional_gesture_never_uses_cyclic_dtw(self):
+        from cv.template_classifier import DataTemplateClassifier, _normalize_trajectory
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            template_path = Path(tmp) / "gesture_templates.json"
+            payload = {
+                "version": 1,
+                "target_point_count": 32,
+                "prototypes": {"glacius": [_normalize_trajectory(self._downward()).tolist()]},
+                "thresholds": {"glacius": 0.5},
+            }
+            template_path.write_text(__import__("json").dumps(payload), encoding="utf-8")
+            classifier = DataTemplateClassifier(
+                template_path=template_path,
+                enable_cyclic_stupefy=True,
+            )
+            with patch("cv.template_classifier._cyclic_dtw_best") as cyclic_dtw:
+                result = classifier.classify(self._downward(), "left")
+
+        cyclic_dtw.assert_not_called()
+        self.assertEqual(result.spell, "glacius")
+        self.assertFalse(result.cyclic_used)
+
+    def test_reverse_matching_requires_explicit_flag(self):
+        from cv.template_classifier import _cyclic_dtw_best, _normalize_trajectory
+
+        angles = np.linspace(0, 2 * np.pi, 33)
+        radii = 65 + 14 * np.sin(angles * 3) + 8 * np.cos(angles * 2)
+        loop = np.column_stack([400 + radii * np.cos(angles), 300 + radii * np.sin(angles)])
+        prototype = _normalize_trajectory(loop.tolist())
+        reversed_query = _normalize_trajectory(loop[::-1].tolist())
+
+        forward_distance, _, _ = _cyclic_dtw_best(
+            reversed_query, np.asarray([prototype]), allow_reverse=False,
+        )
+        reverse_distance, _, reversed_flags = _cyclic_dtw_best(
+            reversed_query, np.asarray([prototype]), allow_reverse=True,
+        )
+
+        self.assertLess(reverse_distance[0], forward_distance[0])
+        self.assertTrue(reversed_flags[0])
+
+    def test_ambiguous_top_two_can_be_rejected_without_reason_parsing(self):
+        from cv.template_classifier import DataTemplateClassifier, _normalize_trajectory
+
+        horizontal = _normalize_trajectory(self._horizontal_right()).tolist()
+        with tempfile.TemporaryDirectory() as tmp:
+            template_path = Path(tmp) / "gesture_templates.json"
+            payload = {
+                "version": 2,
+                "target_point_count": 32,
+                "prototypes": {
+                    "incendio": [{"prototype_id": "inc-1", "points": horizontal}],
+                    "lumos": [{"prototype_id": "lum-1", "points": horizontal}],
+                },
+                "thresholds": {"incendio": 0.5, "lumos": 0.5},
+                "margin_thresholds": {"incendio": 0.1, "lumos": 0.1},
+            }
+            template_path.write_text(__import__("json").dumps(payload), encoding="utf-8")
+            result = DataTemplateClassifier(
+                template_path=template_path,
+                reject_ambiguous=True,
+            ).classify(self._horizontal_right(), "left")
+
+        self.assertIsNone(result.spell)
+        self.assertTrue(result.ambiguous)
+        self.assertEqual(result.margin, 0.0)
+        self.assertEqual(result.matched_prototype_id, "inc-1")
+        self.assertIn(result.second_spell, {"incendio", "lumos"})
 
     def test_data_template_rejects_when_distance_exceeds_threshold(self):
         from cv.template_classifier import DataTemplateClassifier, _normalize_trajectory

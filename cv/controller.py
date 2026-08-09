@@ -6,6 +6,7 @@ import numpy as np
 
 from config import (
     CV_LOST_HOLD_TIME,
+    CV_CYCLIC_STUPEFY_PRIMARY,
     CV_PALM_CONFIDENCE,
     CV_PALM_HOLD_TIME,
     CV_PALM_MAX_CAST_SPEED,
@@ -25,10 +26,12 @@ from cv.gesture_pipeline import (
     GestureClassificationContext,
     GesturePipeline,
     HeuristicGestureClassifier,
+    NormalizedHeuristicGestureClassifier,
+    StupefyCyclicOverlayClassifier,
 )
 from cv.hand_tracker import ensure_hand_model, get_hand_landmark_list
 from cv.hybrid_classifier import RuntimeTemplateClassifier
-from cv.template_classifier import DataTemplateClassifier
+from cv.template_classifier import DataTemplateClassifier, DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH
 from cv.wand_debug_log import WandDebugLogger
 from cv.wand_detector import WandDetector
 from game.cv_training import TRAINING_LABELS
@@ -60,17 +63,37 @@ def _set_track_state(track, state, debug_state, detail):
     track.debug_detail = detail
 
 
-def create_default_gesture_pipeline(data_template_path=None, use_fused_primary=USE_ZZJ_FUSED_PRIMARY):
+def create_default_gesture_pipeline(
+    data_template_path=None,
+    use_fused_primary=USE_ZZJ_FUSED_PRIMARY,
+    use_cyclic_stupefy_primary=CV_CYCLIC_STUPEFY_PRIMARY,
+):
     primary = HeuristicGestureClassifier()
+    shadows = {"normalized_heuristic": NormalizedHeuristicGestureClassifier()}
     if use_fused_primary:
         template = DataTemplateClassifier(template_path=data_template_path)
         if not template.loaded:
             template = RuntimeTemplateClassifier()
         if template.loaded:
+            if isinstance(template, DataTemplateClassifier):
+                shadow_path = template.template_path
+                if data_template_path is None and DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH.exists():
+                    shadow_path = DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH
+                shadows["cyclic_template"] = DataTemplateClassifier(
+                    template_path=shadow_path,
+                    enable_cyclic_stupefy=True,
+                    reject_ambiguous=True,
+                    cyclic_stupefy_only=True,
+                )
+                if use_cyclic_stupefy_primary and shadows["cyclic_template"].loaded:
+                    template = StupefyCyclicOverlayClassifier(
+                        baseline=template,
+                        cyclic_candidate=shadows["cyclic_template"],
+                    )
             primary = FusedGestureClassifier(template=template)
         else:
             primary = HeuristicGestureClassifier()
-    return GesturePipeline(primary=primary)
+    return GesturePipeline(primary=primary, shadows=shadows)
 
 
 class CVGestureController:
@@ -221,6 +244,23 @@ class CVGestureController:
                     "normalized_speed": getattr(metadata, "normalized_speed", None),
                 }
                 event["agreement"] = shadow.spell == result.spell
+            cyclic = pipeline_evaluation.cyclic_shadow
+            if cyclic is not None:
+                event["cyclic_shadow"] = {
+                    "spell": cyclic.spell,
+                    "confidence": cyclic.confidence,
+                    "method": cyclic.method,
+                    "reason": cyclic.reason,
+                    "best_distance": cyclic.best_distance,
+                    "second_spell": cyclic.second_spell,
+                    "second_distance": cyclic.second_distance,
+                    "margin": cyclic.margin,
+                    "ambiguous": cyclic.ambiguous,
+                    "matched_prototype_id": cyclic.matched_prototype_id,
+                    "algorithm_version": cyclic.algorithm_version,
+                    "best_shift": cyclic.best_shift,
+                    "cyclic_used": cyclic.cyclic_used,
+                }
         prepare_event = getattr(getattr(self, "gesture_logger", None), "prepare_event", None)
         return prepare_event(event) if callable(prepare_event) else event
 

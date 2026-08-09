@@ -9,7 +9,11 @@ import numpy as np
 
 TARGET_POINT_COUNT = 32
 DTW_ACCEPT_THRESHOLD = 1.5
+DEFAULT_MARGIN_THRESHOLD = 0.05
 DEFAULT_DATA_TEMPLATE_PATH = Path("models/gesture_templates.json")
+DEFAULT_CYCLIC_SHADOW_TEMPLATE_PATH = Path("models/gesture_templates_shadow_v2.json")
+DATA_TEMPLATE_ALGORITHM_VERSION = "data-template-dtw-v2-structured"
+CYCLIC_TEMPLATE_ALGORITHM_VERSION = "data-template-dtw-v2-cyclic-stupefy"
 
 
 def _normalize_trajectory(points) -> Optional[np.ndarray]:
@@ -126,6 +130,106 @@ def _flip_x(points: np.ndarray) -> np.ndarray:
     return flipped
 
 
+def _reanchor_normalized_trajectory(points: np.ndarray) -> np.ndarray:
+    """Re-anchor an already normalized trajectory after a cyclic roll."""
+    anchored = np.asarray(points, dtype=np.float32) - np.asarray(points[0], dtype=np.float32)
+    max_span = float(np.max(np.abs(anchored))) if anchored.size else 0.0
+    if max_span > 1e-6:
+        anchored = anchored / max_span
+    return anchored.astype(np.float32)
+
+
+def _cyclic_dtw_best(
+    query: np.ndarray,
+    prototypes: np.ndarray,
+    *,
+    allow_reverse: bool = False,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Best distance, shift, and reverse flag for each closed prototype."""
+    prototypes = np.asarray(prototypes, dtype=np.float32)
+    if prototypes.ndim != 3 or len(prototypes) == 0:
+        return (
+            np.asarray([], dtype=np.float64),
+            np.asarray([], dtype=np.int32),
+            np.asarray([], dtype=bool),
+        )
+
+    variants = []
+    owners = []
+    shifts = []
+    reversals = []
+    for prototype_index, prototype in enumerate(prototypes):
+        orientations = [(prototype, False)]
+        if allow_reverse:
+            orientations.append((prototype[::-1], True))
+        for oriented, reversed_sequence in orientations:
+            for shift in range(len(oriented)):
+                rolled = np.roll(oriented, -shift, axis=0)
+                variants.append(_reanchor_normalized_trajectory(rolled))
+                owners.append(prototype_index)
+                shifts.append(shift)
+                reversals.append(reversed_sequence)
+
+    variant_batch = np.stack(variants).astype(np.float32)
+    direct = _batch_dtw_distances(query, variant_batch)
+    mirrored = _batch_dtw_distances(_flip_x(query), variant_batch)
+    distances = np.minimum(direct, mirrored)
+    best_distance = np.full((len(prototypes),), float("inf"), dtype=np.float64)
+    best_shift = np.zeros((len(prototypes),), dtype=np.int32)
+    best_reversed = np.zeros((len(prototypes),), dtype=bool)
+    for index, distance in enumerate(distances):
+        owner = owners[index]
+        if distance < best_distance[owner]:
+            best_distance[owner] = float(distance)
+            best_shift[owner] = shifts[index]
+            best_reversed[owner] = reversals[index]
+    return best_distance, best_shift, best_reversed
+
+
+def closed_trajectory_gate(points) -> dict:
+    """Use the existing development thresholds as the cyclic-DTW safety gate."""
+    from cv.gesture_classifier import (
+        MIN_PATH_LENGTH_FOR_SHAPE_RULES,
+        MIN_RAW_POINTS_FOR_SHAPE_RULES,
+        STUPEFY_CIRCLE_AREA_MIN,
+        STUPEFY_CIRCLE_CIRCULARITY_MIN,
+        STUPEFY_CIRCLE_CLOSURE_RATIO_MAX,
+        STUPEFY_CIRCLE_PATH_MIN,
+        STUPEFY_CIRCLE_SPAN_MIN,
+        extract_gesture_features,
+    )
+
+    features = extract_gesture_features(points, "left")
+    if features is None:
+        return {"passed": False, "reasons": ["too_few_points"]}
+    closure = float(np.linalg.norm(features.points[-1] - features.points[0]))
+    closure_ratio = closure / max(features.path_len, 1.0)
+    circularity = float(4.0 * math.pi * features.area / max(features.path_len ** 2, 1.0))
+    checks = {
+        "raw_points": features.raw_count >= MIN_RAW_POINTS_FOR_SHAPE_RULES,
+        "path_length": (
+            features.path_len >= MIN_PATH_LENGTH_FOR_SHAPE_RULES
+            and features.path_len > STUPEFY_CIRCLE_PATH_MIN
+        ),
+        "closure_ratio": closure_ratio < STUPEFY_CIRCLE_CLOSURE_RATIO_MAX,
+        "x_span": features.x_span > STUPEFY_CIRCLE_SPAN_MIN,
+        "y_span": features.y_span > STUPEFY_CIRCLE_SPAN_MIN,
+        "area": features.area > STUPEFY_CIRCLE_AREA_MIN,
+        "circularity": circularity > STUPEFY_CIRCLE_CIRCULARITY_MIN,
+    }
+    return {
+        "passed": all(checks.values()),
+        "reasons": [name for name, passed in checks.items() if not passed],
+        "raw_points": features.raw_count,
+        "path_length": features.path_len,
+        "closure_ratio": closure_ratio,
+        "x_span": features.x_span,
+        "y_span": features.y_span,
+        "area": features.area,
+        "circularity": circularity,
+    }
+
+
 def _gen_incendio_template() -> np.ndarray:
     x = np.linspace(0, 1, TARGET_POINT_COUNT, dtype=np.float32)
     y = np.zeros(TARGET_POINT_COUNT, dtype=np.float32)
@@ -196,10 +300,25 @@ def template_label_to_spell(label: str) -> str:
 class DataTemplateClassifier:
     """Non-parametric DTW matcher backed by representative Mode 4 trajectories."""
 
-    def __init__(self, template_path=None):
+    def __init__(
+        self,
+        template_path=None,
+        *,
+        enable_cyclic_stupefy: bool = False,
+        reject_ambiguous: bool = False,
+        allow_cyclic_reverse: Optional[bool] = None,
+        cyclic_stupefy_only: bool = False,
+    ):
         self.template_path = Path(template_path) if template_path is not None else DEFAULT_DATA_TEMPLATE_PATH
         self._prototypes: dict[str, list[np.ndarray]] = {}
+        self._prototype_ids: dict[str, list[str]] = {}
         self._thresholds: dict[str, float] = {}
+        self._margin_thresholds: dict[str, float] = {}
+        self.enable_cyclic_stupefy = bool(enable_cyclic_stupefy)
+        self.reject_ambiguous = bool(reject_ambiguous)
+        self.cyclic_stupefy_only = bool(cyclic_stupefy_only)
+        self.allow_cyclic_reverse = allow_cyclic_reverse
+        self.template_pack_version = None
         self.loaded = False
         self.load_error = ""
         self._load()
@@ -220,17 +339,34 @@ class DataTemplateClassifier:
             return
 
         target_count = int(payload.get("target_point_count") or TARGET_POINT_COUNT)
+        self.template_pack_version = payload.get("version")
         prototypes = payload.get("prototypes") or {}
         thresholds = payload.get("thresholds") or {}
+        margin_thresholds = payload.get("margin_thresholds") or {}
+        cyclic_config = payload.get("cyclic_dtw") or {}
+        if self.allow_cyclic_reverse is None:
+            self.allow_cyclic_reverse = bool(cyclic_config.get("allow_reverse", False))
         for spell, arrays in prototypes.items():
             mats = []
-            for array in arrays or []:
+            prototype_ids = []
+            for index, item in enumerate(arrays or []):
+                if isinstance(item, dict):
+                    array = item.get("points") or item.get("trajectory")
+                    prototype_id = str(item.get("prototype_id") or item.get("id") or f"{spell}:v2:{index}")
+                else:
+                    array = item
+                    prototype_id = f"{spell}:legacy:{index}"
                 mat = np.asarray(array, dtype=np.float32)
                 if mat.ndim == 2 and mat.shape == (target_count, 2):
                     mats.append(mat)
+                    prototype_ids.append(prototype_id)
             if mats:
                 self._prototypes[spell] = mats
+                self._prototype_ids[spell] = prototype_ids
                 self._thresholds[spell] = float(thresholds.get(spell, DTW_ACCEPT_THRESHOLD))
+                self._margin_thresholds[spell] = float(
+                    margin_thresholds.get(spell, DEFAULT_MARGIN_THRESHOLD)
+                )
 
         self.loaded = bool(self._prototypes)
         if not self.loaded and not self.load_error:
@@ -242,23 +378,66 @@ class DataTemplateClassifier:
         flipped = _batch_dtw_distances(_flip_x(normalized), prototypes)
         return float(np.minimum(direct, flipped).min())
 
-    def _best_distances(self, normalized: np.ndarray) -> dict[str, float]:
+    def _prototype_matches(self, normalized: np.ndarray, points) -> dict[str, list[dict]]:
         labels = []
         prototypes = []
+        prototype_ids = []
         for spell, spell_prototypes in self._prototypes.items():
-            for prototype in spell_prototypes:
+            for index, prototype in enumerate(spell_prototypes):
                 labels.append(spell)
                 prototypes.append(prototype)
+                prototype_ids.append(self._prototype_ids[spell][index])
         if not prototypes:
             return {}
         prototype_batch = np.stack(prototypes).astype(np.float32)
         direct = _batch_dtw_distances(normalized, prototype_batch)
         flipped = _batch_dtw_distances(_flip_x(normalized), prototype_batch)
         distances = np.minimum(direct, flipped)
-        best = {spell: float("inf") for spell in self._prototypes}
-        for spell, distance in zip(labels, distances):
-            best[spell] = min(best[spell], float(distance))
-        return best
+        shifts = np.zeros((len(prototypes),), dtype=np.int32)
+        reversed_flags = np.zeros((len(prototypes),), dtype=bool)
+        cyclic_used = False
+        gate = closed_trajectory_gate(points)
+        if self.enable_cyclic_stupefy and gate.get("passed") and "stupefy" in self._prototypes:
+            stupefy_indices = [index for index, spell in enumerate(labels) if spell == "stupefy"]
+            stupefy_batch = prototype_batch[stupefy_indices]
+            cyclic_distances, cyclic_shifts, cyclic_reversed = _cyclic_dtw_best(
+                normalized,
+                stupefy_batch,
+                allow_reverse=bool(self.allow_cyclic_reverse),
+            )
+            for local_index, prototype_index in enumerate(stupefy_indices):
+                distances[prototype_index] = cyclic_distances[local_index]
+                shifts[prototype_index] = cyclic_shifts[local_index]
+                reversed_flags[prototype_index] = cyclic_reversed[local_index]
+            cyclic_used = True
+
+        matches = {spell: [] for spell in self._prototypes}
+        for index, spell in enumerate(labels):
+            matches[spell].append({
+                "distance": float(distances[index]),
+                "prototype_id": prototype_ids[index],
+                "shift": int(shifts[index]),
+                "reversed": bool(reversed_flags[index]),
+                "cyclic": bool(cyclic_used and spell == "stupefy"),
+            })
+        matches["__gate__"] = gate
+        return matches
+
+    def _rank_spells(self, normalized: np.ndarray, points) -> tuple[list[dict], dict]:
+        prototype_matches = self._prototype_matches(normalized, points)
+        gate = prototype_matches.pop("__gate__", {})
+        ranked = []
+        for spell, matches in prototype_matches.items():
+            best = min(matches, key=lambda item: item["distance"])
+            threshold = max(self._thresholds.get(spell, DTW_ACCEPT_THRESHOLD), 1e-6)
+            ranked.append({
+                "spell": spell,
+                **best,
+                "threshold": threshold,
+                "distance_ratio": best["distance"] / threshold,
+            })
+        ranked.sort(key=lambda item: (item["distance_ratio"], item["distance"], item["spell"]))
+        return ranked, gate
 
     def classify(self, points, side) -> ClassificationResult:
         from cv.gesture_pipeline import ClassificationResult
@@ -269,6 +448,10 @@ class DataTemplateClassifier:
                 confidence=0.0,
                 method="data_template",
                 reason=self.load_error or "template pack missing",
+                algorithm_version=(
+                    CYCLIC_TEMPLATE_ALGORITHM_VERSION
+                    if self.enable_cyclic_stupefy else DATA_TEMPLATE_ALGORITHM_VERSION
+                ),
             )
 
         normalized = _normalize_trajectory(points)
@@ -278,41 +461,93 @@ class DataTemplateClassifier:
                 confidence=0.0,
                 method="data_template",
                 reason="too few points to normalize",
+                algorithm_version=(
+                    CYCLIC_TEMPLATE_ALGORITHM_VERSION
+                    if self.enable_cyclic_stupefy else DATA_TEMPLATE_ALGORITHM_VERSION
+                ),
             )
 
-        best_spell = None
-        best_distance = float("inf")
-        best_threshold = 1.0
-        distances = self._best_distances(normalized)
-        for spell in self._prototypes:
-            distance = distances[spell]
-            threshold = max(self._thresholds.get(spell, DTW_ACCEPT_THRESHOLD), 1e-6)
-            if distance / threshold < best_distance / best_threshold:
-                best_spell = spell
-                best_distance = distance
-                best_threshold = threshold
+        if self.enable_cyclic_stupefy and self.cyclic_stupefy_only:
+            gate = closed_trajectory_gate(points)
+            if not gate.get("passed"):
+                return ClassificationResult(
+                    spell=None,
+                    confidence=0.0,
+                    method="cyclic_template_shadow",
+                    reason=f"closure gate rejected: {','.join(gate.get('reasons') or [])}",
+                    features={"closure_gate": gate},
+                    algorithm_version=CYCLIC_TEMPLATE_ALGORITHM_VERSION,
+                )
 
-        if best_spell is None:
+        ranked, gate = self._rank_spells(normalized, points)
+        if not ranked:
             return ClassificationResult(
                 spell=None,
                 confidence=0.0,
                 method="data_template",
                 reason="no prototypes",
+                algorithm_version=DATA_TEMPLATE_ALGORITHM_VERSION,
             )
+
+        best = ranked[0]
+        second = ranked[1] if len(ranked) > 1 else None
+        best_spell = best["spell"]
+        best_distance = best["distance"]
+        best_threshold = best["threshold"]
+        margin = (
+            second["distance_ratio"] - best["distance_ratio"]
+            if second is not None else float("inf")
+        )
+        margin_threshold = self._margin_thresholds.get(best_spell, DEFAULT_MARGIN_THRESHOLD)
+        ambiguous = bool(second is not None and margin < margin_threshold)
+        algorithm_version = (
+            CYCLIC_TEMPLATE_ALGORITHM_VERSION
+            if self.enable_cyclic_stupefy else DATA_TEMPLATE_ALGORITHM_VERSION
+        )
+        structured = {
+            "best_distance": best_distance,
+            "second_spell": template_label_to_spell(second["spell"]) if second else None,
+            "second_distance": second["distance"] if second else None,
+            "margin": margin,
+            "ambiguous": ambiguous,
+            "matched_prototype_id": best["prototype_id"],
+            "algorithm_version": algorithm_version,
+            "best_shift": best["shift"],
+            "cyclic_used": bool(best.get("cyclic")),
+            "features": {
+                "closure_gate": gate,
+                "best_reversed": best["reversed"],
+                "distance_margin_kind": "normalized_threshold_ratio",
+            },
+        }
 
         confidence = float(max(0.0, min(1.0, 1.0 - best_distance / best_threshold)))
         if best_distance > best_threshold:
             return ClassificationResult(
                 spell=None,
                 confidence=confidence,
-                method="data_template",
+                method="cyclic_template_shadow" if self.enable_cyclic_stupefy else "data_template",
                 reason=f"best {best_spell} distance {best_distance:.3f}>{best_threshold:.3f}",
+                **structured,
+            )
+
+        if ambiguous and self.reject_ambiguous:
+            return ClassificationResult(
+                spell=None,
+                confidence=confidence,
+                method="cyclic_template_shadow" if self.enable_cyclic_stupefy else "data_template",
+                reason=(
+                    f"ambiguous {best_spell}/{second['spell']} margin "
+                    f"{margin:.3f}<{margin_threshold:.3f}"
+                ),
+                **structured,
             )
 
         cast_spell = template_label_to_spell(best_spell)
         return ClassificationResult(
             spell=cast_spell,
             confidence=confidence,
-            method="data_template",
+            method="cyclic_template_shadow" if self.enable_cyclic_stupefy else "data_template",
             reason=f"{best_spell} distance {best_distance:.3f}<{best_threshold:.3f}",
+            **structured,
         )
