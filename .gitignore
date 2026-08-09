@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+*.temp
+*.png
+*.jpg
+*.jpeg
+.settings/
+*.code-workspace
+logs/
