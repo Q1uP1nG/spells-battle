@@ -9,6 +9,53 @@ if str(ROOT) not in sys.path:
 
 
 class MainModeTests(unittest.TestCase):
+    def test_keyboard_casts_use_active_battle_session(self):
+        from game.mode import GameMode, ModeRunner
+        from main import handle_battle_cast_key
+
+        class FakeSession:
+            def __init__(self):
+                self.calls = []
+
+            def request_cast(self, **kwargs):
+                self.calls.append(kwargs)
+                return "submitted"
+
+        session = FakeSession()
+        result = handle_battle_cast_key(
+            ord("q"), ModeRunner(GameMode.SOLO), session, now=12.5,
+        )
+
+        self.assertEqual(result, "submitted")
+        self.assertEqual(session.calls, [{
+            "player_index": 0,
+            "spell": "incendio",
+            "now": 12.5,
+            "source": "keyboard",
+        }])
+
+    def test_p2_keyboard_cast_respects_mode_gate(self):
+        from game.mode import GameMode, ModeRunner
+        from main import handle_battle_cast_key
+
+        class FakeSession:
+            def __init__(self):
+                self.calls = []
+
+            def request_cast(self, **kwargs):
+                self.calls.append(kwargs)
+                return "submitted"
+
+        session = FakeSession()
+        self.assertIsNone(
+            handle_battle_cast_key(ord("u"), ModeRunner(GameMode.SOLO), session, 4.0)
+        )
+        self.assertEqual(session.calls, [])
+
+        result = handle_battle_cast_key(ord("u"), ModeRunner(GameMode.DUEL), session, 4.0)
+        self.assertEqual(result, "submitted")
+        self.assertEqual(session.calls[0]["player_index"], 1)
+
     def test_intro_ignores_no_key_and_escape(self):
         from main import should_leave_intro
 

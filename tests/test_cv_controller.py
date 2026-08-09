@@ -13,6 +13,50 @@ if str(ROOT) not in sys.path:
 
 
 class CVControllerPalmGateTests(unittest.TestCase):
+    def test_cast_cv_spell_submits_through_bound_session(self):
+        from game.commands import CastIntent, CastSubmission
+        from models.cv_track import CVTrack
+
+        class FakeSession:
+            def __init__(self, game):
+                self.game = game
+                self.calls = []
+
+            def request_cast(self, **kwargs):
+                self.calls.append(kwargs)
+                intent = CastIntent(
+                    spell=kwargs["spell"],
+                    sequence=1,
+                    client_time_ms=int(kwargs["now"] * 1000),
+                    source=kwargs["source"],
+                )
+                return CastSubmission(intent=intent, accepted=True)
+
+        class FakeGame:
+            players = [SimpleNamespace(side="left", last_message="")]
+
+            def cast_spell(self, *_args):
+                raise AssertionError("CV must not call BattleGame.cast_spell directly")
+
+        game = FakeGame()
+        session = FakeSession(game)
+        controller = self.make_controller()
+        controller.allow_casting = True
+        controller.battle_session = session
+        track = CVTrack()
+
+        did_cast = controller.cast_cv_spell(
+            game, 0, track, "incendio", confidence=0.95, now=12.0,
+        )
+
+        self.assertTrue(did_cast)
+        self.assertEqual(session.calls, [{
+            "player_index": 0,
+            "spell": "incendio",
+            "now": 12.0,
+            "source": "cv",
+        }])
+
     def make_controller(self):
         from cv.controller import CVGestureController
 

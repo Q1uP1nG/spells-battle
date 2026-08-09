@@ -9,6 +9,7 @@ from game.audio import AudioManager
 from game.battle import BattleGame
 from game.cv_training import get_training_label
 from game.mode import GameMode, ModeRunner
+from game.session import LocalBattleSession
 from game.settings import collect, load, restore, save
 from renderer.hud import draw_hud
 from renderer.text import draw_cv_text
@@ -128,6 +129,25 @@ def handle_character_key(key, game):
     return f"P{player_index + 1}: {profile.name} - {profile.buff_label}"
 
 
+def handle_battle_cast_key(key, runner, battle_session, now):
+    """Route every player keyboard cast through the active battle session."""
+    if key in P1_KEYS:
+        return battle_session.request_cast(
+            player_index=0,
+            spell=P1_KEYS[key],
+            now=now,
+            source="keyboard",
+        )
+    if runner.accepts_p2_keyboard and key in P2_KEYS:
+        return battle_session.request_cast(
+            player_index=1,
+            spell=P2_KEYS[key],
+            now=now,
+            source="keyboard",
+        )
+    return None
+
+
 def play_sound_event(audio, event):
     kind = event[0]
     if kind == "cast":
@@ -165,8 +185,9 @@ def main():
         print("Camera not available; using generated arena background.")
 
     game = BattleGame()
+    battle_session = LocalBattleSession(game)
     postfx = PostFX()
-    cv_controller = CVGestureController()
+    cv_controller = CVGestureController(battle_session=battle_session)
     audio = AudioManager()
     audio_available = audio.init()
     if audio_available:
@@ -397,12 +418,7 @@ def main():
         if runner.mode == GameMode.PVE and runner.pve_paused:
             continue
 
-        if key in P1_KEYS:
-            spell_name = P1_KEYS[key]
-            game.cast_spell(0, spell_name, now)
-        elif runner.accepts_p2_keyboard and key in P2_KEYS:
-            spell_name = P2_KEYS[key]
-            game.cast_spell(1, spell_name, now)
+        handle_battle_cast_key(key, runner, battle_session, now)
 
     if cap is not None:
         cap.release()

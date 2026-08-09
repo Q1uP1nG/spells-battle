@@ -27,6 +27,7 @@ from cv.template_classifier import DataTemplateClassifier
 from cv.wand_debug_log import WandDebugLogger
 from cv.wand_detector import WandDetector
 from game.cv_training import TRAINING_LABELS
+from game.session import LocalBattleSession
 from models.cv_track import CVTrack, CastState
 from renderer.text import draw_cv_text
 
@@ -68,7 +69,7 @@ def create_default_gesture_pipeline(data_template_path=None, use_fused_primary=U
 
 
 class CVGestureController:
-    def __init__(self, gesture_logger=None, wand_debug_logger=None):
+    def __init__(self, gesture_logger=None, wand_debug_logger=None, battle_session=None):
         self.available = False
         self.input_mode = "finger"
         self.verbose_debug = False
@@ -86,6 +87,7 @@ class CVGestureController:
         )
         self.gesture_pipeline = create_default_gesture_pipeline()
         self.gesture_logger = gesture_logger if gesture_logger is not None else GestureLogger()
+        self.battle_session = battle_session
         self.intended_spell = None
         self.gesture_attempt_id = 0
         self.training_capture_enabled = False
@@ -911,7 +913,17 @@ class CVGestureController:
                              f"{label} paused")
             return False
 
-        did_cast = game.cast_spell(player_index, spell, now)
+        session = getattr(self, "battle_session", None)
+        if session is None or getattr(session, "game", game) is not game:
+            session = LocalBattleSession(game)
+            self.battle_session = session
+        submission = session.request_cast(
+            player_index=player_index,
+            spell=spell,
+            now=now,
+            source="cv",
+        )
+        did_cast = submission.accepted is True
 
         if result is not None:
             side = game.players[player_index].side
@@ -923,7 +935,8 @@ class CVGestureController:
                 cast_attempted=True,
                 cast_success=did_cast,
                 debug_state="CAST" if did_cast else "BLOCKED",
-                block_reason=game.players[player_index].last_message if not did_cast else "",
+                block_reason=(submission.reason or game.players[player_index].last_message)
+                if not did_cast else "",
             ))
 
         if did_cast:
@@ -942,8 +955,12 @@ class CVGestureController:
             track.last_cast_label = label
             track.last_cast_confidence = confidence
             track.last_cast_until = now + 0.6
-            _set_track_state(track, CastState.WAIT, "BLOCKED",
-                             game.players[player_index].last_message)
+            _set_track_state(
+                track,
+                CastState.WAIT,
+                "BLOCKED",
+                submission.reason or game.players[player_index].last_message,
+            )
         return did_cast
 
     def preview_track_for_spell(self, game, player_index, track, detail):
