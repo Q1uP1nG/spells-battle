@@ -57,6 +57,13 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(summary["logged_shadow"]["correct"], 2)
         self.assertEqual(summary["real_template"]["correct"], 4)
         self.assertEqual(summary["current_heuristic"]["total"], 4)
+        self.assertEqual(summary["current_heuristic"]["latency_ms"]["count"], 4)
+        self.assertIsNotNone(summary["fused"]["latency_ms"]["p95"])
+        self.assertIn("margin", summary["real_template"])
+        self.assertEqual(
+            summary["current_heuristic"]["breakdowns"]["input_mode"]["unknown"]["total"],
+            4,
+        )
 
     def test_evaluate_samples_reports_data_template_and_fused_accuracy(self):
         from cv.gesture_pipeline import ClassificationResult
@@ -116,6 +123,169 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
         self.assertEqual(summary["correct"], 2)
         self.assertEqual(summary["by_label"]["circle"]["correct"], 1)
         self.assertEqual(summary["by_label"]["overload"]["correct"], 1)
+        self.assertEqual(summary["error_acceptance_rate"], 0.0)
+
+    def test_error_acceptance_rate_excludes_rejections(self):
+        from tools.evaluate_gesture_templates import summarize_predictions
+
+        summary = summarize_predictions([
+            ("incendio", "glacius"),
+            ("glacius", None),
+            ("lumos", "lumos"),
+        ])
+
+        self.assertAlmostEqual(summary["error_acceptance_rate"], 1 / 3)
+        self.assertAlmostEqual(summary["rejection_rate"], 1 / 3)
+
+    def test_baseline_comparison_supports_legacy_metrics_without_error_acceptance(self):
+        from tools.evaluate_gesture_templates import compare_to_baseline, summarize_predictions
+
+        current_method = summarize_predictions([
+            ("incendio", "incendio"),
+            ("glacius", "incendio"),
+        ])
+        baseline_method = summarize_predictions([
+            ("incendio", "incendio"),
+            ("glacius", None),
+        ])
+        baseline_method.pop("error_acceptance_rate")
+
+        comparison = compare_to_baseline(
+            {"methods": {"candidate": current_method}},
+            {"methods": {"candidate": baseline_method}},
+        )
+
+        self.assertAlmostEqual(comparison["candidate"]["error_acceptance_rate_delta"], 0.5)
+
+    def test_session_grouped_folds_have_no_group_or_sample_leakage(self):
+        from tools.evaluate_gesture_templates import build_grouped_folds, build_samples
+
+        entries = []
+        for session_index in range(4):
+            for sample_index in range(2):
+                entries.append({
+                    **self._sample(
+                        "incendio",
+                        [[0, sample_index], [70, sample_index], [140, sample_index]],
+                        attempt=sample_index,
+                    ),
+                    "sample_id": f"s{session_index}-{sample_index}",
+                    "session_id": f"session-{session_index}",
+                })
+        samples = build_samples(entries)
+
+        folds = build_grouped_folds(samples, "session_grouped_cv", fold_count=3)
+
+        seen_test_indices = set()
+        seen_test_sessions = set()
+        for fold in folds:
+            train_sessions = {samples[index].session_id for index in fold["train_indices"]}
+            test_sessions = {samples[index].session_id for index in fold["test_indices"]}
+            self.assertFalse(train_sessions.intersection(test_sessions))
+            self.assertFalse(seen_test_indices.intersection(fold["test_indices"]))
+            self.assertFalse(seen_test_sessions.intersection(test_sessions))
+            seen_test_indices.update(fold["test_indices"])
+            seen_test_sessions.update(test_sessions)
+        self.assertEqual(seen_test_indices, set(range(len(samples))))
+
+    def test_user_grouped_folds_fail_when_anonymous_user_metadata_is_missing(self):
+        from tools.evaluate_gesture_templates import (
+            EvaluationDataError,
+            build_grouped_folds,
+            build_samples,
+        )
+
+        samples = build_samples([
+            {**self._sample("incendio", [[0, 0], [70, 0], [140, 0]]), "session_id": "a"},
+            {**self._sample("incendio", [[0, 1], [70, 1], [140, 1]]), "session_id": "b"},
+        ])
+
+        with self.assertRaisesRegex(EvaluationDataError, "lacks user_id"):
+            build_grouped_folds(samples, "user_grouped_cv")
+
+    def test_user_and_device_grouped_folds_keep_identity_out_of_training_fold(self):
+        from tools.evaluate_gesture_templates import build_grouped_folds, build_samples
+
+        entries = []
+        for index, (user_id, device_id) in enumerate(
+            (("u1", "d1"), ("u1", "d2"), ("u2", "d1"), ("u2", "d2"))
+        ):
+            entries.append({
+                **self._sample("incendio", [[0, index], [70, index], [140, index]]),
+                "sample_id": f"identity-{index}",
+                "session_id": f"session-{index}",
+                "user_id": user_id,
+                "device_id": device_id,
+            })
+        samples = build_samples(entries)
+
+        for mode, field in (
+            ("user_grouped_cv", "user_id"),
+            ("device_grouped_cv", "device_id"),
+        ):
+            folds = build_grouped_folds(samples, mode, fold_count=2)
+            for fold in folds:
+                train_ids = {getattr(samples[index], field) for index in fold["train_indices"]}
+                test_ids = {getattr(samples[index], field) for index in fold["test_indices"]}
+                self.assertFalse(train_ids.intersection(test_ids))
+
+    def test_derived_sample_stays_in_parent_fold(self):
+        from tools.evaluate_gesture_templates import build_grouped_folds, build_samples
+
+        samples = build_samples([
+            {
+                **self._sample("circle", [[0, 0], [10, 10], [0, 20], [0, 0]]),
+                "sample_id": "circle-original",
+                "session_id": "circle-session",
+            },
+            {
+                **self._sample("circle", [[10, 10], [0, 20], [0, 0], [10, 10]]),
+                "sample_id": "circle-derived",
+                "derived_from_sample_id": "circle-original",
+                "session_id": "circle-session",
+            },
+            {
+                **self._sample("incendio", [[0, 0], [70, 0], [140, 0]]),
+                "sample_id": "other",
+                "session_id": "other-session",
+            },
+        ])
+
+        folds = build_grouped_folds(samples, "session_grouped_cv", fold_count=2)
+        memberships = {
+            sample_index: fold["fold"]
+            for fold in folds
+            for sample_index in fold["test_indices"]
+        }
+
+        self.assertEqual(memberships[0], memberships[1])
+
+    def test_canonical_evaluation_can_isolate_locked_partition(self):
+        from tools.evaluate_gesture_templates import build_samples_from_corpus
+        from tools.gesture_corpus import CanonicalCorpus, CanonicalGestureSample
+
+        corpus = CanonicalCorpus(
+            samples=[
+                CanonicalGestureSample(
+                    sample_id="dev",
+                    label="incendio",
+                    points=[[0, 0], [70, 0], [140, 0]],
+                    dataset_partition="development",
+                ),
+                CanonicalGestureSample(
+                    sample_id="locked",
+                    label="glacius",
+                    points=[[0, 0], [0, 70], [0, 140]],
+                    dataset_partition="locked",
+                ),
+            ],
+            audit={},
+            source_files=[],
+        )
+
+        locked = build_samples_from_corpus(corpus, dataset_partition="locked")
+
+        self.assertEqual([sample.sample_id for sample in locked], ["locked"])
 
     def test_review_label_is_loaded_and_discarded_review_is_skipped(self):
         from tools.evaluate_gesture_templates import build_samples
@@ -147,12 +317,14 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
             entries = [
                 {
                     "sample_id": "incendio-1",
+                    "session_id": "session-1",
                     "review_status": "accepted",
                     "label": "incendio",
                     "points": [[0, 0], [70, 0], [140, 0], [210, 0]],
                 },
                 {
                     "sample_id": "incendio-2",
+                    "session_id": "session-2",
                     "review_status": "accepted",
                     "label": "incendio",
                     "points": [[0, 2], [70, 2], [140, 2], [210, 2]],

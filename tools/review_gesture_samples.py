@@ -84,8 +84,8 @@ def load_review_candidates(log_paths, min_path_length=55.0):
             if path_length < float(min_path_length):
                 continue
             attempt_id = entry.get("attempt_id", index + 1)
-            samples.append({
-                "sample_id": f"{path.name}:{attempt_id}",
+            sample = {
+                "sample_id": entry.get("sample_id") or f"{path.name}:{attempt_id}",
                 "source_file": str(path),
                 "source_attempt_id": attempt_id,
                 "timestamp": entry.get("timestamp"),
@@ -99,7 +99,24 @@ def load_review_candidates(log_paths, min_path_length=55.0):
                 "cast_attempted": bool(entry.get("cast_attempted", False)),
                 "cast_success": bool(entry.get("cast_success", False)),
                 "debug_state": entry.get("debug_state"),
-            })
+            }
+            for name in (
+                "schema",
+                "session_id",
+                "input_mode",
+                "user_id",
+                "device_id",
+                "frame_width",
+                "frame_height",
+                "fps_estimate",
+                "palm_scale",
+                "classifier_version",
+                "dataset_partition",
+                "derived_from_sample_id",
+            ):
+                if entry.get(name) is not None:
+                    sample[name] = entry[name]
+            samples.append(sample)
     return samples
 
 
@@ -108,7 +125,7 @@ def append_review_record(output_path, sample, label, review_status):
     _validate_review_decision(label, review_status)
 
     record = {
-        "schema": 1,
+        "schema": 2,
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
         "review_status": review_status,
         "label": label if review_status == "accepted" else None,
@@ -124,6 +141,21 @@ def append_review_record(output_path, sample, label, review_status):
         "primary": sample.get("primary") or {},
         "cast_success": bool(sample.get("cast_success", False)),
     }
+    for name in (
+        "session_id",
+        "input_mode",
+        "user_id",
+        "device_id",
+        "frame_width",
+        "frame_height",
+        "fps_estimate",
+        "palm_scale",
+        "classifier_version",
+        "dataset_partition",
+        "derived_from_sample_id",
+    ):
+        if sample.get(name) is not None:
+            record[name] = sample[name]
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,7 +240,7 @@ def run_retrain(args=None):
     except SystemExit as exc:
         exit_code = int(exc.code or 0)
     except Exception as exc:
-        stream.write(f"\nRetrain failed: {exc}\n")
+        stream.write(f"\nTemplate pack rebuild failed: {exc}\n")
         return {
             "ok": False,
             "exit_code": 1,
@@ -396,7 +428,7 @@ HTML = r"""<!doctype html>
     <aside class="side">
       <div class="side-head">
         <h1>Sample</h1>
-        <button class="ghost" id="retrain">Retrain</button>
+        <button class="ghost" id="retrain">Rebuild Template Pack</button>
       </div>
       <div class="status" id="retrainStatus"></div>
       <div class="kv" id="meta"></div>
@@ -586,11 +618,11 @@ HTML = r"""<!doctype html>
         const payload = await res.json();
         status.textContent = payload.ok
           ? `Template model updated (${payload.committed_reviews || 0} committed)`
-          : "Retrain failed";
+          : "Template pack rebuild failed";
         if (payload.ok) await loadSamples();
-        if (!payload.ok) alert(payload.output || "Retrain failed");
+        if (!payload.ok) alert(payload.output || "Template pack rebuild failed");
       } catch (error) {
-        status.textContent = "Retrain failed";
+        status.textContent = "Template pack rebuild failed";
         alert(String(error));
       } finally {
         button.disabled = false;
@@ -664,7 +696,7 @@ def make_handler(samples, output_path, retrain_func=None):
                     result = {
                         "ok": False,
                         "exit_code": 1,
-                        "output": f"Retrain failed: {exc}",
+                        "output": f"Template pack rebuild failed: {exc}",
                         "committed_reviews": 0,
                     }
                 self._send_json(result, status=200 if result["ok"] else 500)

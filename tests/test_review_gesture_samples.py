@@ -39,7 +39,7 @@ class ReviewGestureSamplesTests(unittest.TestCase):
         self.assertIn('id="retrain"', HTML)
         self.assertIn('id="retrainStatus"', HTML)
         self.assertIn("/api/retrain", HTML)
-        self.assertIn("Retrain", HTML)
+        self.assertIn("Rebuild Template Pack", HTML)
 
     def test_review_page_does_not_show_shadow_prediction(self):
         from tools.review_gesture_samples import HTML
@@ -97,6 +97,9 @@ class ReviewGestureSamplesTests(unittest.TestCase):
             log_path = root / "session.jsonl"
             entries = [
                 {
+                    "schema": 2,
+                    "sample_id": "stable-sample-7",
+                    "session_id": "stable-session",
                     "attempt_id": 7,
                     "timestamp": 123.4,
                     "mode": "wand",
@@ -107,6 +110,9 @@ class ReviewGestureSamplesTests(unittest.TestCase):
                     "shadow": {"spell": "incendio", "confidence": 0.70, "method": "template"},
                     "agreement": True,
                     "cast_success": True,
+                    "user_id": "player-a",
+                    "device_id": "camera-a",
+                    "palm_scale": 110.0,
                 },
                 {
                     "attempt_id": 8,
@@ -124,9 +130,13 @@ class ReviewGestureSamplesTests(unittest.TestCase):
             samples = load_review_candidates([log_path], min_path_length=55.0)
 
         self.assertEqual(len(samples), 1)
-        self.assertEqual(samples[0]["sample_id"], "session.jsonl:7")
+        self.assertEqual(samples[0]["sample_id"], "stable-sample-7")
         self.assertEqual(samples[0]["source_file"], str(log_path))
         self.assertEqual(samples[0]["suggested_label"], "incendio")
+        self.assertEqual(samples[0]["session_id"], "stable-session")
+        self.assertEqual(samples[0]["user_id"], "player-a")
+        self.assertEqual(samples[0]["device_id"], "camera-a")
+        self.assertEqual(samples[0]["palm_scale"], 110.0)
         self.assertNotIn("shadow", samples[0])
         self.assertNotIn("agreement", samples[0])
 
@@ -143,16 +153,25 @@ class ReviewGestureSamplesTests(unittest.TestCase):
                 "points": [[0, 0], [40, 0], [80, 0]],
                 "primary": {"spell": "incendio"},
                 "shadow": {"spell": "incendio"},
+                "session_id": "session-a",
+                "user_id": "player-a",
+                "device_id": "camera-a",
+                "dataset_partition": "locked",
             }
 
             record = append_review_record(output_path, sample, "incendio", "accepted")
             saved = json.loads(output_path.read_text(encoding="utf-8").strip())
 
         self.assertEqual(record["label"], "incendio")
+        self.assertEqual(saved["schema"], 2)
         self.assertEqual(saved["review_status"], "accepted")
         self.assertEqual(saved["points"], [[0, 0], [40, 0], [80, 0]])
         self.assertNotIn("shadow", record)
         self.assertNotIn("shadow", saved)
+        self.assertEqual(saved["session_id"], "session-a")
+        self.assertEqual(saved["user_id"], "player-a")
+        self.assertEqual(saved["device_id"], "camera-a")
+        self.assertEqual(saved["dataset_partition"], "locked")
 
     def test_filter_unreviewed_candidates_skips_existing_reviews(self):
         from tools.review_gesture_samples import append_review_record, filter_unreviewed_candidates

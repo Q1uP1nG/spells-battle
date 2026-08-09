@@ -66,6 +66,11 @@ class TrainGestureTemplatesTests(unittest.TestCase):
                     index,
                     self._record("overload", [[0, 0], [20, 30], [40, 0], [60, 30], [80, 0]]),
                 )
+            locked = self._record(
+                "overload", [[0, 0], [25, 35], [50, 0], [75, 35], [100, 0]]
+            )
+            locked["dataset_partition"] = "locked"
+            bank.set_slot("overload", 2, locked)
 
             exit_code = main([
                 "--bank", str(bank_path),

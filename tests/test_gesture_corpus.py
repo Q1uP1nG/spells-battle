@@ -99,6 +99,33 @@ class GestureCorpusTests(unittest.TestCase):
         self.assertEqual(corpus.samples[0].label, "overload")
         self.assertTrue(corpus.audit["label_conflicts"])
 
+    def test_locked_review_partition_overrides_development_bank_view(self):
+        from tools.gesture_corpus import load_canonical_corpus
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bank_path = root / "bank.json"
+            reviewed_path = root / "reviewed.jsonl"
+            points = [[0, 0], [60, 0], [120, 0]]
+            bank_path.write_text(json.dumps({
+                "slots": {"incendio": [{
+                    "sample_id": "locked-sample",
+                    "points": points,
+                    "dataset_partition": "development",
+                }]},
+            }), encoding="utf-8")
+            self._write_jsonl(reviewed_path, [{
+                "sample_id": "locked-sample",
+                "review_status": "accepted",
+                "label": "incendio",
+                "points": points,
+                "dataset_partition": "locked",
+            }])
+
+            corpus = load_canonical_corpus(bank_path=bank_path, reviewed_path=reviewed_path)
+
+        self.assertEqual(corpus.samples[0].dataset_partition, "locked")
+
     def test_exact_trajectory_deduplicates_legacy_views_without_sample_id(self):
         from tools.gesture_corpus import load_canonical_corpus
 

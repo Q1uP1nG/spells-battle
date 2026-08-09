@@ -49,6 +49,8 @@ def load_labeled_trajectories(
         min_confidence=min_confidence,
     )
     for sample in corpus.samples:
+        if sample.dataset_partition == "locked":
+            continue
         normalized = _normalize_trajectory(sample.points)
         if normalized is None or normalized.shape != (TARGET_POINT_COUNT, 2):
             continue

@@ -10,6 +10,8 @@ import csv
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
+from time import perf_counter
 import subprocess
 import sys
 from collections import Counter, defaultdict
@@ -35,6 +37,11 @@ from tools.gesture_corpus import CanonicalCorpus, load_canonical_corpus
 
 TEMPLATE_SCORE_DISTANCE = 0.35
 FOCUS_LABELS = ("circle", "overload")
+SPLIT_MODES = ("session_grouped_cv", "user_grouped_cv", "device_grouped_cv")
+
+
+class EvaluationDataError(ValueError):
+    pass
 
 
 @dataclass
@@ -51,6 +58,10 @@ class GestureSample:
     input_mode: str = "unknown"
     logged_primary_available: bool = False
     logged_shadow_available: bool = False
+    user_id: str = ""
+    device_id: str = ""
+    derived_from_sample_id: str = ""
+    dataset_partition: str = "development"
 
 
 def load_entries(path: str | Path) -> list[dict]:
@@ -98,12 +109,19 @@ def build_samples(entries: list[dict]) -> list[GestureSample]:
                 input_mode=str(entry.get("input_mode") or entry.get("mode") or "unknown"),
                 logged_primary_available=isinstance(primary, dict) and "spell" in primary,
                 logged_shadow_available=isinstance(shadow, dict) and "spell" in shadow,
+                user_id=str(entry.get("user_id") or ""),
+                device_id=str(entry.get("device_id") or ""),
+                derived_from_sample_id=str(entry.get("derived_from_sample_id") or ""),
+                dataset_partition=str(entry.get("dataset_partition") or "development"),
             )
         )
     return samples
 
 
-def build_samples_from_corpus(corpus: CanonicalCorpus) -> list[GestureSample]:
+def build_samples_from_corpus(
+    corpus: CanonicalCorpus,
+    dataset_partition: str = "all",
+) -> list[GestureSample]:
     return build_samples([
         {
             "label": sample.label,
@@ -115,8 +133,13 @@ def build_samples_from_corpus(corpus: CanonicalCorpus) -> list[GestureSample]:
             "training_attempt": sample.source_attempt_id,
             "primary": sample.metadata.get("primary"),
             "shadow": sample.metadata.get("shadow"),
+            "user_id": sample.metadata.get("user_id"),
+            "device_id": sample.metadata.get("device_id"),
+            "derived_from_sample_id": sample.metadata.get("derived_from_sample_id"),
+            "dataset_partition": sample.dataset_partition,
         }
         for sample in corpus.samples
+        if dataset_partition == "all" or sample.dataset_partition == dataset_partition
     ])
 
 
@@ -142,10 +165,13 @@ def classify_real_template(
     samples: list[GestureSample],
     sample_index: int,
     distance_cache: Optional[dict[tuple[int, int], float]] = None,
+    candidate_indices: Optional[list[int]] = None,
 ) -> dict:
     target = samples[sample_index]
     matches = []
-    for other_index, sample in enumerate(samples):
+    indices = candidate_indices if candidate_indices is not None else range(len(samples))
+    for other_index in indices:
+        sample = samples[other_index]
         if other_index == sample_index:
             continue
         distance = _sample_distance(samples, sample_index, other_index, distance_cache)
@@ -298,7 +324,11 @@ def search_hybrid_weights(
     )
 
 
-def evaluate_samples(samples: list[GestureSample], data_template_classifier=None) -> dict:
+def evaluate_samples(
+    samples: list[GestureSample],
+    data_template_classifier=None,
+    distance_cache=None,
+) -> dict:
     data_template_classifier = data_template_classifier or DataTemplateClassifier()
     fused_classifier = FusedGestureClassifier(template=data_template_classifier)
     methods = {
@@ -310,14 +340,24 @@ def evaluate_samples(samples: list[GestureSample], data_template_classifier=None
         "fused": [],
         "hybrid_1_0_0_2": [],
     }
+    method_records = defaultdict(list)
     misses = []
-    distance_cache = {}
+    distance_cache = distance_cache if distance_cache is not None else {}
+    timings = defaultdict(list)
+    template_margins = []
 
     for i, sample in enumerate(samples):
+        started = perf_counter()
         current_spell, current_conf = classify_cv_gesture(sample.points, "left")
+        timings["current_heuristic"].append((perf_counter() - started) * 1000.0)
         template = classify_real_template(samples, i, distance_cache)
+        template_margins.append(template["margin"])
+        started = perf_counter()
         data_template = data_template_classifier.classify(sample.points, "left")
+        timings["data_template"].append((perf_counter() - started) * 1000.0)
+        started = perf_counter()
         fused = fused_classifier.classify(sample.points, "left")
+        timings["fused"].append((perf_counter() - started) * 1000.0)
         hybrid = classify_hybrid(
             samples,
             i,
@@ -338,6 +378,7 @@ def evaluate_samples(samples: list[GestureSample], data_template_classifier=None
             predictions["logged_shadow"] = sample.logged_shadow
         for method, prediction in predictions.items():
             methods[method].append((sample.label, prediction))
+            method_records[method].append((sample, prediction))
         for method, prediction in predictions.items():
             if prediction != template_label_to_spell(sample.label):
                 misses.append({
@@ -357,6 +398,11 @@ def evaluate_samples(samples: list[GestureSample], data_template_classifier=None
         method: summarize_predictions(pairs)
         for method, pairs in methods.items()
     }
+    for method, values in timings.items():
+        method_summaries[method]["latency_ms"] = _distribution(values)
+    for method, records in method_records.items():
+        method_summaries[method]["breakdowns"] = _metric_breakdowns(records)
+    method_summaries["real_template"]["margin"] = _distribution(template_margins)
     return {
         "total": len(samples),
         "methods": method_summaries,
@@ -409,22 +455,226 @@ def summarize_predictions(pairs: list[tuple[str, Optional[str]]]) -> dict:
         "macro": macro,
         "per_spell": per_spell,
         "rejection_rate": sum(1 for _label, prediction in pairs if prediction is None) / max(len(pairs), 1),
+        "error_acceptance_rate": sum(
+            1
+            for label, prediction in pairs
+            if prediction is not None and prediction != template_label_to_spell(label)
+        ) / max(len(pairs), 1),
         "by_label": dict(by_label),
         "confusion": {label: dict(counter) for label, counter in confusion.items()},
     }
 
 
+def _distribution(values) -> dict:
+    ordered = sorted(float(value) for value in values if math.isfinite(float(value)))
+    if not ordered:
+        return {"count": 0, "p50": None, "p95": None, "min": None, "max": None}
+    return {
+        "count": len(ordered),
+        "p50": _percentile(ordered, 0.50),
+        "p95": _percentile(ordered, 0.95),
+        "min": ordered[0],
+        "max": ordered[-1],
+    }
+
+
+def _percentile(ordered, quantile):
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * quantile
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
+def _metric_breakdowns(records):
+    result = {}
+    for field in ("input_mode", "session_id", "user_id", "device_id"):
+        grouped = defaultdict(list)
+        for sample, prediction in records:
+            value = str(getattr(sample, field, "") or "")
+            if not value or (field in ("user_id", "device_id") and value == "legacy"):
+                continue
+            grouped[value].append((sample.label, prediction))
+        if grouped:
+            result[field] = {
+                group: summarize_predictions(pairs)
+                for group, pairs in sorted(grouped.items())
+            }
+    return result
+
+
+def compare_to_baseline(summary, baseline_metrics):
+    comparisons = {}
+    baseline_methods = baseline_metrics.get("methods") or {}
+    for method, current in summary.get("methods", {}).items():
+        baseline = baseline_methods.get(method)
+        if not baseline:
+            continue
+        comparisons[method] = {
+            "accuracy_delta": current.get("accuracy", 0.0) - baseline.get("accuracy", 0.0),
+            "macro_f1_delta": (
+                (current.get("macro") or {}).get("f1", 0.0)
+                - (baseline.get("macro") or {}).get("f1", 0.0)
+            ),
+            "rejection_rate_delta": (
+                current.get("rejection_rate", 0.0) - baseline.get("rejection_rate", 0.0)
+            ),
+            "error_acceptance_rate_delta": (
+                _error_acceptance_rate(current) - _error_acceptance_rate(baseline)
+            ),
+        }
+    return comparisons
+
+
+def _error_acceptance_rate(metric):
+    if "error_acceptance_rate" in metric:
+        return float(metric["error_acceptance_rate"])
+    total = max(int(metric.get("total") or 0), 1)
+    incorrect_rate = (total - int(metric.get("correct") or 0)) / total
+    return max(0.0, incorrect_rate - float(metric.get("rejection_rate") or 0.0))
+
+
+def build_grouped_folds(samples, split_mode="session_grouped_cv", fold_count=5):
+    if split_mode not in SPLIT_MODES:
+        raise EvaluationDataError(f"unknown split mode: {split_mode}")
+    if fold_count < 2:
+        raise EvaluationDataError("grouped evaluation requires at least two folds")
+
+    seen_sample_ids = set()
+    groups = defaultdict(list)
+    field = {
+        "session_grouped_cv": "session_id",
+        "user_grouped_cv": "user_id",
+        "device_grouped_cv": "device_id",
+    }[split_mode]
+    samples_by_id = {sample.sample_id: sample for sample in samples if sample.sample_id}
+
+    def effective_group_id(sample):
+        current = sample
+        visited = set()
+        while current.derived_from_sample_id and current.derived_from_sample_id not in visited:
+            visited.add(current.derived_from_sample_id)
+            parent = samples_by_id.get(current.derived_from_sample_id)
+            if parent is None:
+                break
+            current = parent
+        return str(getattr(current, field, "") or getattr(sample, field, "") or "")
+
+    for index, sample in enumerate(samples):
+        if sample.sample_id:
+            if sample.sample_id in seen_sample_ids:
+                raise EvaluationDataError(f"duplicate sample_id: {sample.sample_id}")
+            seen_sample_ids.add(sample.sample_id)
+        group_id = effective_group_id(sample)
+        if not group_id or (field != "session_id" and group_id == "legacy"):
+            raise EvaluationDataError(
+                f"{split_mode} unavailable: sample {sample.sample_id or index} lacks {field}"
+            )
+        group_key = f"{field}:{group_id}"
+        groups[group_key].append(index)
+
+    if len(groups) < 2:
+        raise EvaluationDataError(
+            f"{split_mode} requires at least two independent groups; found {len(groups)}"
+        )
+    actual_fold_count = min(int(fold_count), len(groups))
+    fold_groups = [[] for _ in range(actual_fold_count)]
+    fold_sizes = [0] * actual_fold_count
+    ordered_groups = sorted(groups.items(), key=lambda item: (-len(item[1]), item[0]))
+    for group_key, indices in ordered_groups:
+        target = min(range(actual_fold_count), key=lambda idx: (fold_sizes[idx], idx))
+        fold_groups[target].append(group_key)
+        fold_sizes[target] += len(indices)
+
+    all_indices = set(range(len(samples)))
+    folds = []
+    for index, group_keys in enumerate(fold_groups):
+        test_indices = sorted(item for key in group_keys for item in groups[key])
+        train_indices = sorted(all_indices.difference(test_indices))
+        folds.append({
+            "fold": index,
+            "groups": sorted(group_keys),
+            "train_indices": train_indices,
+            "test_indices": test_indices,
+        })
+    _validate_folds(samples, folds)
+    return folds
+
+
+def _validate_folds(samples, folds):
+    test_membership = {}
+    for fold in folds:
+        train = set(fold["train_indices"])
+        test = set(fold["test_indices"])
+        if train.intersection(test):
+            raise EvaluationDataError(f"fold {fold['fold']} has train/test leakage")
+        for sample_index in test:
+            if sample_index in test_membership:
+                raise EvaluationDataError(f"sample index {sample_index} appears in multiple test folds")
+            test_membership[sample_index] = fold["fold"]
+    if set(test_membership) != set(range(len(samples))):
+        raise EvaluationDataError("not every sample appears in exactly one test fold")
+    sample_index_by_id = {
+        sample.sample_id: index for index, sample in enumerate(samples) if sample.sample_id
+    }
+    for index, sample in enumerate(samples):
+        parent_index = sample_index_by_id.get(sample.derived_from_sample_id)
+        if parent_index is not None and test_membership[index] != test_membership[parent_index]:
+            raise EvaluationDataError(
+                f"derived sample {sample.sample_id} is separated from {sample.derived_from_sample_id}"
+            )
+
+
+def evaluate_grouped_template(samples, folds, distance_cache=None):
+    distance_cache = distance_cache if distance_cache is not None else {}
+    pairs = []
+    margins = []
+    misses = []
+    for fold in folds:
+        for sample_index in fold["test_indices"]:
+            result = classify_real_template(
+                samples,
+                sample_index,
+                distance_cache,
+                candidate_indices=fold["train_indices"],
+            )
+            sample = samples[sample_index]
+            prediction = template_label_to_spell(result["spell"])
+            pairs.append((sample.label, prediction))
+            margins.append(result["margin"])
+            if prediction != template_label_to_spell(sample.label):
+                misses.append({
+                    "sample_index": sample.index,
+                    "sample_id": sample.sample_id,
+                    "label": sample.label,
+                    "method": "grouped_template",
+                    "prediction": prediction,
+                    "fold": fold["fold"],
+                    "template_top": result["top"][:3],
+                    "points": len(sample.points),
+                })
+    result = summarize_predictions(pairs)
+    result["margin"] = _distribution(margins)
+    return result, misses
+
+
 def format_summary(summary: dict) -> str:
     lines = [f"Total labeled samples: {summary['total']}", ""]
-    for method in [
+    method_order = [
         "logged_primary",
         "current_heuristic",
         "logged_shadow",
         "real_template",
+        "grouped_template",
         "data_template",
         "fused",
         "hybrid_1_0_0_2",
-    ]:
+    ]
+    for method in [name for name in method_order if name in summary]:
         result = summary[method]
         total = max(result["total"], 1)
         lines.append(f"{method}: {result['correct']}/{result['total']} ({result['correct'] / total:.1%})")
@@ -468,6 +718,16 @@ def format_summary(summary: dict) -> str:
                 f"label={miss['label']} method={miss['method']} pred={miss['prediction']} "
                 f"points={miss['points']} top={top}"
             )
+    if summary.get("comparison"):
+        lines.append("")
+        lines.append("Change from baseline:")
+        for method, deltas in sorted(summary["comparison"].items()):
+            lines.append(
+                f"  {method}: accuracy {deltas['accuracy_delta']:+.3f}, "
+                f"macro_f1 {deltas['macro_f1_delta']:+.3f}, "
+                f"rejection {deltas['rejection_rate_delta']:+.3f}, "
+                f"error_acceptance {deltas['error_acceptance_rate_delta']:+.3f}"
+            )
     return "\n".join(lines)
 
 
@@ -489,9 +749,41 @@ def main(path: str) -> None:
         )
 
 
-def evaluate_canonical_corpus(corpus, data_template_classifier=None):
-    samples = build_samples_from_corpus(corpus)
-    return samples, evaluate_samples(samples, data_template_classifier=data_template_classifier)
+def evaluate_canonical_corpus(
+    corpus,
+    data_template_classifier=None,
+    split_mode=None,
+    fold_count=5,
+    dataset_partition="all",
+):
+    samples = build_samples_from_corpus(corpus, dataset_partition=dataset_partition)
+    distance_cache = {}
+    summary = evaluate_samples(
+        samples,
+        data_template_classifier=data_template_classifier,
+        distance_cache=distance_cache,
+    )
+    summary["dataset_partition"] = dataset_partition
+    if split_mode:
+        folds = build_grouped_folds(samples, split_mode=split_mode, fold_count=fold_count)
+        grouped, misses = evaluate_grouped_template(samples, folds, distance_cache=distance_cache)
+        summary["grouped_template"] = grouped
+        summary["methods"]["grouped_template"] = grouped
+        summary["misses"].extend(misses)
+        summary["split"] = {
+            "mode": split_mode,
+            "fold_count": len(folds),
+            "folds": [
+                {
+                    "fold": fold["fold"],
+                    "groups": fold["groups"],
+                    "train_samples": len(fold["train_indices"]),
+                    "test_samples": len(fold["test_indices"]),
+                }
+                for fold in folds
+            ],
+        }
+    return samples, summary
 
 
 def _template_pack_manifest(path=Path("models/gesture_templates.json")):
@@ -535,6 +827,8 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
         },
         "template_pack": _template_pack_manifest(),
         "corpus_version": corpus.audit.get("corpus_version"),
+        "split": summary.get("split"),
+        "dataset_partition": summary.get("dataset_partition"),
         "command": list(command),
         "corpus_audit": corpus.audit,
         "source_files": corpus.source_files,
@@ -542,7 +836,13 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
     (output / "manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    metrics = {"total": summary["total"], "methods": summary["methods"]}
+    metrics = {
+        "total": summary["total"],
+        "split": summary.get("split"),
+        "dataset_partition": summary.get("dataset_partition"),
+        "comparison": summary.get("comparison"),
+        "methods": summary["methods"],
+    }
     (output / "metrics.json").write_text(
         json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8"
     )
@@ -553,10 +853,18 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
         "built from this bank and is therefore a resubstitution result. `real_template` "
         "uses sample-level leave-one-out DTW but is not yet session-grouped."
     )
+    split = summary.get("split")
+    split_text = "No grouped split was requested."
+    if split:
+        split_text = (
+            f"`{split['mode']}` with {split['fold_count']} folds; group IDs are kept "
+            "entirely within one test fold."
+        )
     report_header = (
         "# Gesture Evaluation\n\n"
         "## Scope and limitations\n\n"
         f"{limitations}\n\n"
+        f"Dataset partition: `{summary.get('dataset_partition', 'all')}`. {split_text}\n\n"
         "## Corpus audit\n\n"
         f"- Canonical samples: {audit.get('canonical_samples', 0)}\n"
         f"- Duplicate views merged: {audit.get('duplicates_merged', 0)}\n"
@@ -572,16 +880,26 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
     )
     with open(output / "confusion_matrix.csv", "w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        labels = sorted(summary["fused"]["confusion"])
+        labels = sorted({
+            label
+            for method in summary["methods"].values()
+            for label in method["confusion"]
+        })
         predictions = sorted({
             str(prediction)
-            for values in summary["fused"]["confusion"].values()
+            for method in summary["methods"].values()
+            for values in method["confusion"].values()
             for prediction in values
         })
-        writer.writerow(["actual", *predictions])
-        for label in labels:
-            row = summary["fused"]["confusion"][label]
-            writer.writerow([label, *[row.get(None if value == "None" else value, 0) for value in predictions]])
+        writer.writerow(["method", "actual", *predictions])
+        for method_name, method in sorted(summary["methods"].items()):
+            for label in labels:
+                row = method["confusion"].get(label, {})
+                writer.writerow([
+                    method_name,
+                    label,
+                    *[row.get(None if value == "None" else value, 0) for value in predictions],
+                ])
     with open(output / "misses.jsonl", "w", encoding="utf-8") as handle:
         for miss in summary["misses"]:
             handle.write(json.dumps(miss, ensure_ascii=False) + "\n")
@@ -595,6 +913,14 @@ def cli(argv=None):
     parser.add_argument("--bank", default=None)
     parser.add_argument("--reviewed", default=None)
     parser.add_argument("--output-dir", default=None)
+    parser.add_argument("--split-mode", choices=SPLIT_MODES, default="session_grouped_cv")
+    parser.add_argument("--folds", type=int, default=5)
+    parser.add_argument("--baseline-metrics", default=None)
+    parser.add_argument(
+        "--partition",
+        choices=("development", "locked", "all"),
+        default="development",
+    )
     args = parser.parse_args(argv)
     if args.path and not any((args.logs, args.bank, args.reviewed, args.output_dir)):
         main(args.path)
@@ -604,7 +930,25 @@ def cli(argv=None):
         bank_path=args.bank,
         reviewed_path=args.reviewed,
     )
-    samples, summary = evaluate_canonical_corpus(corpus)
+    try:
+        samples, summary = evaluate_canonical_corpus(
+            corpus,
+            split_mode=args.split_mode,
+            fold_count=args.folds,
+            dataset_partition=args.partition,
+        )
+    except EvaluationDataError as exc:
+        print(f"Evaluation data error: {exc}", file=sys.stderr)
+        return 2
+    if args.baseline_metrics:
+        try:
+            baseline_metrics = json.loads(
+                Path(args.baseline_metrics).read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Baseline metrics error: {exc}", file=sys.stderr)
+            return 2
+        summary["comparison"] = compare_to_baseline(summary, baseline_metrics)
     if not samples:
         print("No labeled samples found.")
         return 1

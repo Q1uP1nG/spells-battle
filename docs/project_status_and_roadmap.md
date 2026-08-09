@@ -41,6 +41,19 @@ CV Training keys:
 - `Backspace` or `Space`: discard sample
 - `4` / `5` / `6` / `7` / `8`: relabel pending sample as Incendio / Stupefy circle / Glacius / Overload / Lumos
 
+Optional evaluation labels can be set before launch. Use anonymous labels chosen by the user;
+do not use a real name or hardware serial number:
+
+```powershell
+$env:SPELLS_CV_USER_ID="player-a"
+$env:SPELLS_CV_DEVICE_ID="laptop-camera-a"
+python main.py
+```
+
+New gesture logs use Schema v2 and include stable sample/session IDs, input mode,
+frame size, FPS estimate, palm scale when available, review state, classifier version,
+and the optional anonymous labels. Existing Schema v1 logs remain readable.
+
 Mode 4 resumes saved progress from `logs/cv_training/progress.json`. Leaving to the menu and entering Mode 4 again keeps the accepted sample counts. Pressing `SPACE` while not reviewing a pending sample resets the current training progress.
 
 Character selection is available on the menu and is saved with user settings:

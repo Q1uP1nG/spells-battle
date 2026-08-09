@@ -70,6 +70,32 @@ class CVTrainingSessionTests(unittest.TestCase):
             self.assertNotIn("shadow", reloaded.slot("circle", 4))
             self.assertEqual(reloaded.count("circle"), 1)
 
+    def test_template_bank_preserves_schema_v2_evaluation_metadata(self):
+        from game.cv_training import GestureTemplateBank
+
+        bank = GestureTemplateBank(path=None, migrate_from_logs=False)
+        event = self._event([[1, 2], [3, 4], [5, 6]], "circle")
+        event.update({
+            "schema": 2,
+            "sample_id": "session-a:7",
+            "session_id": "session-a",
+            "user_id": "player-a",
+            "device_id": "camera-a",
+            "palm_scale": 123.0,
+            "dataset_partition": "locked",
+        })
+
+        bank.set_slot("circle", 0, event, source="manual")
+        saved = bank.slot("circle", 0)
+
+        self.assertEqual(saved["schema"], 2)
+        self.assertEqual(saved["sample_id"], "session-a:7")
+        self.assertEqual(saved["session_id"], "session-a")
+        self.assertEqual(saved["user_id"], "player-a")
+        self.assertEqual(saved["device_id"], "camera-a")
+        self.assertEqual(saved["palm_scale"], 123.0)
+        self.assertEqual(saved["dataset_partition"], "locked")
+
     def test_template_bank_saves_numpy_points_from_cv_tracks(self):
         from game.cv_training import GestureTemplateBank
 

@@ -93,6 +93,10 @@ class CVGestureController:
         self.training_capture_enabled = False
         self.training_review_callback = None
         self.allow_casting = True
+        self.frame_width = None
+        self.frame_height = None
+        self.fps_estimate = None
+        self._last_update_time = None
 
         try:
             import mediapipe as mp
@@ -170,8 +174,9 @@ class CVGestureController:
         return attempt_id
 
     def _gesture_log_event(self, now, side, points, result, cast_attempted,
-                           cast_success, debug_state, block_reason="", training_mode=False):
-        return {
+                           cast_success, debug_state, block_reason="", training_mode=False,
+                           track=None):
+        event = {
             "schema": 1,
             "attempt_id": self._next_gesture_attempt_id(),
             "timestamp": now,
@@ -189,7 +194,13 @@ class CVGestureController:
             "cast_success": cast_success,
             "block_reason": block_reason,
             "debug_state": debug_state,
+            "frame_width": getattr(self, "frame_width", None),
+            "frame_height": getattr(self, "frame_height", None),
+            "fps_estimate": getattr(self, "fps_estimate", None),
+            "palm_scale": getattr(track, "palm_scale", None) if track is not None else None,
         }
+        prepare_event = getattr(getattr(self, "gesture_logger", None), "prepare_event", None)
+        return prepare_event(event) if callable(prepare_event) else event
 
     def _log_gesture_event(self, event):
         try:
@@ -223,12 +234,21 @@ class CVGestureController:
         if not self.available:
             return
 
+        h, w = frame.shape[:2]
+        self.frame_width = int(w)
+        self.frame_height = int(h)
+        previous_update = getattr(self, "_last_update_time", None)
+        if previous_update is not None and now > previous_update:
+            instant_fps = 1.0 / max(now - previous_update, 1e-6)
+            previous_fps = getattr(self, "fps_estimate", None)
+            self.fps_estimate = instant_fps if previous_fps is None else previous_fps * 0.9 + instant_fps * 0.1
+        self._last_update_time = now
+
         mp_frame = cv2.convertScaleAbs(frame, alpha=1.35, beta=28)
         rgb = cv2.cvtColor(mp_frame, cv2.COLOR_BGR2RGB)
         results = self._detect(rgb, now)
         seen_players = set()
         hand_list = get_hand_landmark_list(results)
-        h, w = frame.shape[:2]
         if hand_list:
             player_indices = self._resolve_player_indices(hand_list, w, force_player_index)
             # At most one hand per player: each track is a single player's
@@ -286,6 +306,7 @@ class CVGestureController:
         wand_preferred_point=None,
     ):
         track.last_seen = now
+        track.palm_scale = self.estimate_palm_scale(hand_landmarks, w, h)
 
         palm_confidence, palm_detail = self.detect_open_palm(hand_landmarks, w, h)
         point, point_detail = self.get_fingertip_point(hand_landmarks, w, h)
@@ -862,6 +883,7 @@ class CVGestureController:
                 cast_success=False,
                 debug_state="REVIEW",
                 training_mode=True,
+                track=track,
             )
             track.debug_state = "REVIEW"
             track.debug_detail = debug_detail
@@ -881,6 +903,7 @@ class CVGestureController:
                 cast_attempted=False,
                 cast_success=False,
                 debug_state=state,
+                track=track,
             ))
 
             if state == "LOST HOLD":
@@ -937,6 +960,7 @@ class CVGestureController:
                 debug_state="CAST" if did_cast else "BLOCKED",
                 block_reason=(submission.reason or game.players[player_index].last_message)
                 if not did_cast else "",
+                track=track,
             ))
 
         if did_cast:
@@ -1061,6 +1085,19 @@ class CVGestureController:
         if spread < palm_scale * 0.72:
             return confidence, f"open palm spread {spread:0.0f}"
         return confidence, f"open palm {extended}/4"
+
+    @staticmethod
+    def estimate_palm_scale(hand_landmarks, w, h):
+        try:
+            wrist = np.array(
+                [hand_landmarks[0].x * w, hand_landmarks[0].y * h], dtype=np.float32
+            )
+            middle_mcp = np.array(
+                [hand_landmarks[9].x * w, hand_landmarks[9].y * h], dtype=np.float32
+            )
+        except (AttributeError, IndexError, TypeError):
+            return None
+        return float(max(np.linalg.norm(middle_mcp - wrist), 1.0))
 
     def get_fingertip_point(self, hand_landmarks, w, h):
         pts = [

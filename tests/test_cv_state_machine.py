@@ -408,6 +408,38 @@ class CVStateMachineTests(unittest.TestCase):
         self.assertEqual(track.state, CastState.WAIT)
         self.assertGreater(len(track.points), 0)
 
+    def test_gesture_event_carries_available_v2_capture_metadata(self):
+        from cv.controller import CVGestureController
+        from cv.gesture_pipeline import ClassificationResult
+        from models.cv_track import CVTrack
+
+        controller = object.__new__(CVGestureController)
+        controller.gesture_attempt_id = 0
+        controller.input_mode = "wand"
+        controller.intended_spell = "circle"
+        controller.frame_width = 1280
+        controller.frame_height = 720
+        controller.fps_estimate = 59.5
+        track = CVTrack()
+        track.palm_scale = 123.25
+
+        event = controller._gesture_log_event(
+            now=10.0,
+            side="left",
+            points=[[0, 0], [10, 10]],
+            result=ClassificationResult("stupefy", 0.9, "fused", "test"),
+            cast_attempted=False,
+            cast_success=False,
+            debug_state="REVIEW",
+            training_mode=True,
+            track=track,
+        )
+
+        self.assertEqual(event["frame_width"], 1280)
+        self.assertEqual(event["frame_height"], 720)
+        self.assertEqual(event["fps_estimate"], 59.5)
+        self.assertEqual(event["palm_scale"], 123.25)
+
     def test_describe_tracking_uses_short_hint_for_small_paths(self):
         import numpy as np
         from models.cv_track import CVTrack

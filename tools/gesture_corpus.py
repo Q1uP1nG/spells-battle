@@ -63,6 +63,7 @@ class CanonicalGestureSample:
     side: str = "left"
     schema: int = 1
     review_status: str = "accepted"
+    dataset_partition: str = "development"
     sources: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
     _label_priority: int = field(default=0, repr=False)
@@ -122,7 +123,7 @@ def load_canonical_corpus(
         registry.add(candidate)
 
     audit = {
-        "schema": 1,
+        "schema": 2,
         "input_candidates": len(candidates),
         "canonical_samples": len(registry.samples),
         "duplicates_merged": registry.duplicates_merged,
@@ -217,6 +218,7 @@ class _CanonicalRegistry:
                 "input_mode": other.input_mode,
                 "side": other.side,
                 "schema": other.schema,
+                "dataset_partition": other.dataset_partition,
                 "metadata": other.metadata,
             })
             del self.samples[other_index]
@@ -250,6 +252,8 @@ class _CanonicalRegistry:
             target.source_attempt_id = candidate["source_attempt_id"]
         if target.input_mode == "unknown" and candidate.get("input_mode"):
             target.input_mode = str(candidate["input_mode"])
+        if candidate.get("dataset_partition") == "locked":
+            target.dataset_partition = "locked"
         target.metadata.update(candidate.get("metadata") or {})
 
 
@@ -274,6 +278,7 @@ def _sample_from_candidate(candidate) -> CanonicalGestureSample:
         input_mode=str(candidate.get("input_mode") or "unknown"),
         side=str(candidate.get("side") or "left"),
         schema=int(candidate.get("schema") or 1),
+        dataset_partition=str(candidate.get("dataset_partition") or "development"),
         sources=[str(candidate.get("source") or "unknown")],
         metadata=dict(candidate.get("metadata") or {}),
         _label_priority=int(candidate.get("label_priority") or 0),
@@ -301,6 +306,7 @@ def _candidate_from_mapping(entry, source, label=None, source_file=None):
         "input_mode": entry.get("input_mode") or entry.get("mode"),
         "side": entry.get("side"),
         "schema": entry.get("schema", 1),
+        "dataset_partition": entry.get("dataset_partition") or "development",
         "metadata": {
             name: entry.get(name)
             for name in (
@@ -313,6 +319,7 @@ def _candidate_from_mapping(entry, source, label=None, source_file=None):
                 "primary",
                 "shadow",
                 "classifier_version",
+                "derived_from_sample_id",
             )
             if entry.get(name) is not None
         },
@@ -324,6 +331,7 @@ def _corpus_version(samples) -> str:
         {
             "sample_id": sample.sample_id,
             "label": sample.label,
+            "dataset_partition": sample.dataset_partition,
             "trajectory": trajectory_fingerprint(sample.points),
         }
         for sample in sorted(samples, key=lambda item: (item.sample_id, item.label))

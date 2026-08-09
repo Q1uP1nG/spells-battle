@@ -23,6 +23,26 @@ DEFAULT_TRAINING_PROGRESS_PATH = Path("logs/cv_training/progress.json")
 DEFAULT_TEMPLATE_BANK_PATH = Path("models/gesture_template_bank.json")
 DEFAULT_TEMPLATE_LOG_GLOB = "logs/cv_sessions/*.jsonl"
 DEFAULT_REVIEWED_SAMPLES_PATH = Path("models/gesture_reviewed_samples.jsonl")
+EVALUATION_METADATA_FIELDS = (
+    "schema",
+    "sample_id",
+    "session_id",
+    "source_file",
+    "source_attempt_id",
+    "attempt_id",
+    "input_mode",
+    "mode",
+    "user_id",
+    "device_id",
+    "frame_width",
+    "frame_height",
+    "fps_estimate",
+    "palm_scale",
+    "classifier_version",
+    "review_status",
+    "dataset_partition",
+    "derived_from_sample_id",
+)
 
 
 def get_training_label(label):
@@ -128,6 +148,9 @@ class GestureTemplateBank:
             "source_label": event.get("intended_spell") or label,
             "primary": deepcopy(event.get("primary") or {}),
         }
+        for name in EVALUATION_METADATA_FIELDS:
+            if event.get(name) is not None:
+                entry[name] = deepcopy(event[name])
         self.slots[label][index] = entry
         self.save()
         return entry
@@ -318,7 +341,7 @@ def _load_reviewed_bank_entries(reviewed_path, labels):
         points = _copy_points(entry.get("points") or [])
         if len(points) < 2:
             continue
-        by_label[label].append({
+        bank_entry = {
             "label": label,
             "points": points,
             "source": "review_promoted",
@@ -329,7 +352,11 @@ def _load_reviewed_bank_entries(reviewed_path, labels):
             "reviewed_at": entry.get("reviewed_at"),
             "promoted_at": promoted_at,
             "primary": deepcopy(entry.get("primary") or {}),
-        })
+        }
+        for name in EVALUATION_METADATA_FIELDS:
+            if entry.get(name) is not None:
+                bank_entry[name] = deepcopy(entry[name])
+        by_label[label].append(bank_entry)
     return by_label
 
 

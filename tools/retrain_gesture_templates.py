@@ -1,4 +1,4 @@
-"""Promote reviewed samples into the bank, then retrain DTW templates.
+"""Promote reviewed samples into the bank, then rebuild the DTW template pack.
 
 Usage:
     python tools/retrain_gesture_templates.py
@@ -19,7 +19,7 @@ from game.cv_training import (  # noqa: E402
     DEFAULT_TEMPLATE_BANK_PATH,
     promote_reviewed_samples_to_bank,
 )
-from tools.train_gesture_templates import DEFAULT_OUTPUT, main as train_main  # noqa: E402
+from tools.train_gesture_templates import DEFAULT_OUTPUT, main as build_pack_main  # noqa: E402
 
 
 def main(argv=None):
@@ -43,7 +43,7 @@ def main(argv=None):
         f"duplicates={summary['skipped_duplicates']}"
     )
 
-    return train_main([
+    return build_pack_main([
         "--bank", str(args.bank),
         "--reviewed", "",
         "--output", str(args.output),

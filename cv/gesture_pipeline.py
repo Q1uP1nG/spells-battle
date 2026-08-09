@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 
+GESTURE_PIPELINE_VERSION = "gesture-pipeline-v1"
+
+
 @dataclass
 class ClassificationResult:
     spell: Optional[str]
@@ -30,7 +33,7 @@ class HeuristicGestureClassifier:
 
 
 class FusedGestureClassifier:
-    """Confidence-weighted fusion of heuristics and learned DTW templates."""
+    """Confidence-weighted fusion of heuristics and non-parametric DTW templates."""
 
     TEMPLATE_RESCUE_MIN = 0.75
     TEMPLATE_OVERRIDE_MIN = 0.70
