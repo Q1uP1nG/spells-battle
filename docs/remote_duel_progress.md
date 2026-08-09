@@ -213,3 +213,53 @@ Real log snapshot before/after the full test suite
 Phase 3: define versioned command/event/snapshot DTOs and strict JSON codecs,
 including required-field validation, forward-compatible optional fields, and
 round-trip tests.
+
+## Phase 3 - Complete
+
+Date: 2026-08-09
+
+### Implementation summary
+
+- Added immutable `PlayerSnapshot`, `ProjectileSnapshot`, and `BattleSnapshot` DTOs.
+- Converted all NumPy-backed positions, velocities, colors, and numeric state to
+  JSON-safe Python values at the snapshot boundary.
+- Represented timed effects as remaining durations relative to `match_time`, avoiding
+  transfer of process-local monotonic clock values.
+- Added protocol version 1 JSON envelopes for room commands, casts, battle events,
+  snapshots, heartbeat messages, and errors.
+- Added explicit protocol errors for invalid JSON, duplicate fields, missing fields,
+  unknown message types, invalid payloads, and version mismatch.
+- Established forward compatibility by ignoring unknown optional fields while
+  validating all required fields.
+- Added `server_tick` to domain events for ordering at the wire boundary.
+
+### Verification
+
+```text
+Protocol tests
+  Ran 11 tests
+  OK
+
+Snapshot tests
+  Ran 3 tests
+  OK
+
+python -m unittest discover -s tests
+  Ran 402 tests in 12.187s
+  OK
+
+Real log snapshot before/after the full test suite
+  REAL_LOGS_UNCHANGED=True
+```
+
+### Remaining risks
+
+- Duplicate cast sequence handling belongs to the connection/room authority and is
+  implemented in Phase 4; the JSON parser already rejects duplicate object keys.
+- Protocol version 1 is intentionally compact and has not yet been exercised over
+  a real WebSocket connection.
+
+### Next phase
+
+Phase 4: implement the in-memory room state machine and local authoritative
+WebSocket server, then verify one server and two headless clients over a random port.

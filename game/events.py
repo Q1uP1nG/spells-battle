@@ -12,3 +12,4 @@ class BattleEvent:
     kind: str
     match_time: float
     payload: Mapping[str, Any]
+    server_tick: int = 0
