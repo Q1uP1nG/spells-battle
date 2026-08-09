@@ -10,6 +10,7 @@ from game.battle import BattleGame
 from game.cv_training import get_training_label
 from game.mode import GameMode, ModeRunner
 from game.remote_session import RemoteBattleSession, RemoteSessionState
+from game.room_code_input import PhysicalRoomCodeKeyboard, apply_room_code_key
 from game.session import LocalBattleSession
 from game.settings import collect, load, restore, save
 from renderer.hud import draw_hud
@@ -203,6 +204,7 @@ def main():
     remote_session = None
     joining_remote_room = False
     remote_room_input = ""
+    room_code_keyboard = PhysicalRoomCodeKeyboard()
     postfx = PostFX()
     cv_controller = CVGestureController(battle_session=battle_session)
     audio = AudioManager()
@@ -326,6 +328,26 @@ def main():
         cv2.imshow("Spells Battle MVP", frame)
         key = cv2.waitKey(1) & 0xFF
 
+        # Room-code entry owns the keyboard.  Route it before every global
+        # hotkey so B/N/M/V/X/D remain valid code characters.  On Windows the
+        # physical-key poller also bypasses Chinese-IME VK_PROCESSKEY (229).
+        if runner.mode == GameMode.REMOTE_LOBBY and joining_remote_room:
+            room_keys = room_code_keyboard.poll() if room_code_keyboard.available else [key]
+            for room_key in room_keys:
+                remote_room_input, action = apply_room_code_key(remote_room_input, room_key)
+                if action == "cancel":
+                    joining_remote_room = False
+                    break
+                if action == "incomplete":
+                    cv_mode_notice = "ROOM CODE NEEDS 6 CHARACTERS"
+                    cv_mode_notice_until = now + 1.2
+                    break
+                if action == "submit":
+                    remote_session.join_room(remote_room_input)
+                    joining_remote_room = False
+                    break
+            continue
+
         if key in QUIT_KEYS:
             break
 
@@ -448,21 +470,13 @@ def main():
             continue
 
         if runner.mode == GameMode.REMOTE_LOBBY:
-            if joining_remote_room:
-                if key in (8, 127):
-                    remote_room_input = remote_room_input[:-1]
-                elif key in (13, 10) and remote_room_input:
-                    remote_session.join_room(remote_room_input)
-                    joining_remote_room = False
-                elif 0 <= key < 256 and chr(key).isalnum() and len(remote_room_input) < 6:
-                    remote_room_input += chr(key).upper()
-                continue
             if key in (ord("c"), ord("C")) and remote_session.player_index is None:
                 remote_session.create_room()
                 continue
             if key in (ord("j"), ord("J")) and remote_session.player_index is None:
                 joining_remote_room = True
                 remote_room_input = ""
+                room_code_keyboard.begin()
                 continue
             if remote_session.player_index is not None and key in (
                 ord("a"), ord("A"), ord("f"), ord("F")
