@@ -359,8 +359,10 @@ class CVStateMachineTests(unittest.TestCase):
         self.assertEqual(event["intended_spell"], "glacius")
         self.assertEqual(event["attempt_id"], 1)
         self.assertEqual(event["schema"], 1)
-        self.assertNotIn("shadow", event)
-        self.assertNotIn("agreement", event)
+        self.assertEqual(event["shadow"]["method"], "normalized_heuristic_shadow")
+        self.assertEqual(event["shadow"]["scale_source"], "trajectory_span_fallback")
+        self.assertTrue(event["pipeline_version"].startswith("gesture-pipeline-v2"))
+        self.assertTrue(event["agreement"])
 
     def test_training_capture_freezes_track_without_casting_or_logging(self):
         import numpy as np
@@ -402,8 +404,9 @@ class CVStateMachineTests(unittest.TestCase):
         self.assertEqual(event["intended_spell"], "glacius")
         self.assertEqual(event["primary"]["spell"], "incendio")
         self.assertTrue(event["training_mode"])
-        self.assertNotIn("shadow", event)
-        self.assertNotIn("agreement", event)
+        self.assertEqual(event["shadow"]["method"], "normalized_heuristic_shadow")
+        self.assertEqual(event["shadow"]["scale_source"], "trajectory_span_fallback")
+        self.assertTrue(event["agreement"])
         self.assertEqual(track.debug_state, "REVIEW")
         self.assertEqual(track.state, CastState.WAIT)
         self.assertGreater(len(track.points), 0)

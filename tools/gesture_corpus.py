@@ -319,6 +319,7 @@ def _candidate_from_mapping(entry, source, label=None, source_file=None):
                 "primary",
                 "shadow",
                 "classifier_version",
+                "pipeline_version",
                 "derived_from_sample_id",
             )
             if entry.get(name) is not None

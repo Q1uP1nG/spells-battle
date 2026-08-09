@@ -82,6 +82,7 @@ class CVTrainingSessionTests(unittest.TestCase):
             "user_id": "player-a",
             "device_id": "camera-a",
             "palm_scale": 123.0,
+            "pipeline_version": "gesture-pipeline-v2-normalized-shadow",
             "dataset_partition": "locked",
         })
 
@@ -94,6 +95,7 @@ class CVTrainingSessionTests(unittest.TestCase):
         self.assertEqual(saved["user_id"], "player-a")
         self.assertEqual(saved["device_id"], "camera-a")
         self.assertEqual(saved["palm_scale"], 123.0)
+        self.assertEqual(saved["pipeline_version"], "gesture-pipeline-v2-normalized-shadow")
         self.assertEqual(saved["dataset_partition"], "locked")
 
     def test_template_bank_saves_numpy_points_from_cv_tracks(self):

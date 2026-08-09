@@ -18,9 +18,14 @@ from config import (
     WAND_LOST_HOLD_TIME,
     WIDTH,
 )
-from cv.gesture_classifier import classify_cv_gesture, cv_path_length, diagnose_cv_gesture
+from cv.gesture_classifier import cv_path_length, diagnose_cv_gesture
 from cv.gesture_log import GestureLogger
-from cv.gesture_pipeline import FusedGestureClassifier, GesturePipeline, HeuristicGestureClassifier
+from cv.gesture_pipeline import (
+    FusedGestureClassifier,
+    GestureClassificationContext,
+    GesturePipeline,
+    HeuristicGestureClassifier,
+)
 from cv.hand_tracker import ensure_hand_model, get_hand_landmark_list
 from cv.hybrid_classifier import RuntimeTemplateClassifier
 from cv.template_classifier import DataTemplateClassifier
@@ -175,7 +180,7 @@ class CVGestureController:
 
     def _gesture_log_event(self, now, side, points, result, cast_attempted,
                            cast_success, debug_state, block_reason="", training_mode=False,
-                           track=None):
+                           track=None, pipeline_evaluation=None):
         event = {
             "schema": 1,
             "attempt_id": self._next_gesture_attempt_id(),
@@ -199,6 +204,23 @@ class CVGestureController:
             "fps_estimate": getattr(self, "fps_estimate", None),
             "palm_scale": getattr(track, "palm_scale", None) if track is not None else None,
         }
+        if pipeline_evaluation is not None:
+            event["pipeline_version"] = pipeline_evaluation.pipeline_version
+            shadow = pipeline_evaluation.normalized_shadow
+            if shadow is not None:
+                metadata = shadow.features
+                event["shadow"] = {
+                    "spell": shadow.spell,
+                    "confidence": shadow.confidence,
+                    "method": shadow.method,
+                    "reason": shadow.reason,
+                    "feature_version": getattr(metadata, "feature_version", None),
+                    "scale_source": getattr(metadata, "scale_source", None),
+                    "coordinate_scale": getattr(metadata, "coordinate_scale", None),
+                    "duration_seconds": getattr(metadata, "duration_seconds", None),
+                    "normalized_speed": getattr(metadata, "normalized_speed", None),
+                }
+                event["agreement"] = shadow.spell == result.spell
         prepare_event = getattr(getattr(self, "gesture_logger", None), "prepare_event", None)
         return prepare_event(event) if callable(prepare_event) else event
 
@@ -855,9 +877,11 @@ class CVGestureController:
         side = game.players[player_index].side
         points = list(track.points)
 
-        result = self.gesture_pipeline.classify(points, side)
+        pipeline_evaluation = self._run_gesture_pipeline(points, side, track, purpose="final")
+        result = pipeline_evaluation.primary
         spell = result.spell
         confidence = result.confidence
+        self._remember_pipeline_evaluation(track, pipeline_evaluation)
 
         if self.verbose_debug:
             diag = diagnose_cv_gesture(points, side)
@@ -884,6 +908,7 @@ class CVGestureController:
                 debug_state="REVIEW",
                 training_mode=True,
                 track=track,
+                pipeline_evaluation=pipeline_evaluation,
             )
             track.debug_state = "REVIEW"
             track.debug_detail = debug_detail
@@ -904,6 +929,7 @@ class CVGestureController:
                 cast_success=False,
                 debug_state=state,
                 track=track,
+                pipeline_evaluation=pipeline_evaluation,
             ))
 
             if state == "LOST HOLD":
@@ -915,7 +941,59 @@ class CVGestureController:
             _set_track_state(track, fallback_state, state, debug_detail)
             return False
 
-        return self.cast_cv_spell(game, player_index, track, spell, confidence, now, result=result)
+        return self.cast_cv_spell(
+            game,
+            player_index,
+            track,
+            spell,
+            confidence,
+            now,
+            result=result,
+            pipeline_evaluation=pipeline_evaluation,
+        )
+
+    def _gesture_context(self, track, purpose):
+        return GestureClassificationContext(
+            palm_scale=getattr(track, "palm_scale", None),
+            frame_width=getattr(self, "frame_width", None),
+            frame_height=getattr(self, "frame_height", None),
+            fps_estimate=getattr(self, "fps_estimate", None),
+            input_mode=getattr(self, "input_mode", "unknown"),
+            purpose=purpose,
+        )
+
+    def _run_gesture_pipeline(self, points, side, track, purpose):
+        context = self._gesture_context(track, purpose)
+        pipeline = getattr(self, "gesture_pipeline", None)
+        if pipeline is None:
+            pipeline = GesturePipeline()
+            self.gesture_pipeline = pipeline
+        classify_both = getattr(pipeline, "classify_both", None)
+        if callable(classify_both):
+            return classify_both(points, side, context)
+
+        # Compatibility for injected test/legacy classifiers that expose only
+        # the historical two-argument classify() method.
+        from cv.gesture_pipeline import PipelineClassification
+
+        result = pipeline.classify(points, side)
+        return PipelineClassification(
+            primary=result,
+            shadows={},
+            pipeline_version=getattr(pipeline, "version", "legacy-pipeline"),
+            purpose=purpose,
+        )
+
+    @staticmethod
+    def _remember_pipeline_evaluation(track, pipeline_evaluation):
+        track.last_pipeline_version = pipeline_evaluation.pipeline_version
+        shadow = pipeline_evaluation.normalized_shadow
+        if shadow is None:
+            track.last_shadow_prediction = "-"
+            track.last_shadow_confidence = 0.0
+            return
+        track.last_shadow_prediction = shadow.spell or "-"
+        track.last_shadow_confidence = shadow.confidence
 
     def _track_index(self, track, fallback):
         for index, candidate in enumerate(getattr(self, "tracks", [])):
@@ -923,7 +1001,8 @@ class CVGestureController:
                 return index
         return fallback
 
-    def cast_cv_spell(self, game, player_index, track, spell, confidence, now, emergency=False, result=None):
+    def cast_cv_spell(self, game, player_index, track, spell, confidence, now, emergency=False,
+                      result=None, pipeline_evaluation=None):
         label = SPELLS[spell]["label"]
         if not getattr(self, "allow_casting", True):
             self.clear_gesture_buffer(track)
@@ -961,6 +1040,7 @@ class CVGestureController:
                 block_reason=(submission.reason or game.players[player_index].last_message)
                 if not did_cast else "",
                 track=track,
+                pipeline_evaluation=pipeline_evaluation,
             ))
 
         if did_cast:
@@ -990,7 +1070,12 @@ class CVGestureController:
     def preview_track_for_spell(self, game, player_index, track, detail):
         track.path_length = cv_path_length(track.points)
         side = game.players[player_index].side
-        spell, confidence = classify_cv_gesture(list(track.points), side)
+        pipeline_evaluation = self._run_gesture_pipeline(
+            list(track.points), side, track, purpose="preview",
+        )
+        result = pipeline_evaluation.primary
+        spell, confidence = result.spell, result.confidence
+        self._remember_pipeline_evaluation(track, pipeline_evaluation)
         if self.verbose_debug:
             diag = diagnose_cv_gesture(list(track.points), side)
             track.last_gesture_debug = diag

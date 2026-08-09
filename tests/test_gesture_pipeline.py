@@ -75,12 +75,82 @@ class GesturePipelineTests(unittest.TestCase):
         result = pipeline.classify([[100, 200]], "left")
         self.assertEqual(result.spell, "glacius")
 
-    def test_pipeline_has_no_shadow_api(self):
-        from cv.gesture_pipeline import GesturePipeline
+    def test_pipeline_returns_primary_and_normalized_shadow_together(self):
+        from cv.gesture_pipeline import GesturePipeline, GESTURE_PIPELINE_VERSION
 
         pipeline = GesturePipeline()
-        self.assertFalse(hasattr(pipeline, "classify_shadow"))
-        self.assertFalse(hasattr(pipeline, "classify_both"))
+        evaluation = pipeline.classify_both(self._make_horizontal_points(), "left")
+
+        self.assertEqual(evaluation.primary.method, "heuristic")
+        self.assertEqual(evaluation.normalized_shadow.method, "normalized_heuristic_shadow")
+        self.assertEqual(evaluation.pipeline_version, GESTURE_PIPELINE_VERSION)
+
+    def test_palm_normalization_is_resolution_independent(self):
+        from cv.gesture_pipeline import GestureClassificationContext, normalize_points_for_context
+
+        small = np.asarray([[100, 200], [140, 180], [180, 160]], dtype=np.float32)
+        large = small * 2.0
+        small_points, small_meta = normalize_points_for_context(
+            small,
+            GestureClassificationContext(palm_scale=80, frame_width=640, frame_height=360),
+        )
+        large_points, large_meta = normalize_points_for_context(
+            large,
+            GestureClassificationContext(palm_scale=160, frame_width=1280, frame_height=720),
+        )
+
+        np.testing.assert_allclose(small_points, large_points, atol=1e-5)
+        self.assertEqual(small_meta.scale_source, "palm_scale")
+        self.assertEqual(large_meta.scale_source, "palm_scale")
+
+    def test_normalization_fallback_is_explicit_and_preserves_direction(self):
+        from cv.gesture_pipeline import GestureClassificationContext, normalize_points_for_context
+
+        right = [[0, 0], [50, 0], [100, 0]]
+        frame_points, frame_meta = normalize_points_for_context(
+            right,
+            GestureClassificationContext(frame_width=640, frame_height=360),
+        )
+        legacy_points, legacy_meta = normalize_points_for_context(right)
+
+        self.assertEqual(frame_meta.scale_source, "frame_diagonal_fallback")
+        self.assertEqual(legacy_meta.scale_source, "trajectory_span_fallback")
+        self.assertGreater(frame_points[-1, 0] - frame_points[0, 0], 0)
+        self.assertGreater(legacy_points[-1, 0] - legacy_points[0, 0], 0)
+
+    def test_normalized_shadow_uses_real_fps_for_duration_metadata(self):
+        from cv.gesture_pipeline import (
+            GestureClassificationContext,
+            NormalizedHeuristicGestureClassifier,
+        )
+
+        points = self._make_upward_points()
+        result = NormalizedHeuristicGestureClassifier().classify(
+            points,
+            "left",
+            GestureClassificationContext(palm_scale=100, fps_estimate=20),
+        )
+
+        self.assertAlmostEqual(result.features.duration_seconds, (len(points) - 1) / 20)
+        self.assertIsNotNone(result.features.normalized_speed)
+
+    def test_primary_result_is_unchanged_by_shadow_disagreement(self):
+        from cv.gesture_pipeline import ClassificationResult, GesturePipeline
+
+        class Primary:
+            def classify(self, _points, _side):
+                return ClassificationResult("glacius", 0.91, "primary", "baseline")
+
+        class Shadow:
+            def classify(self, _points, _side):
+                return ClassificationResult("stupefy", 1.0, "shadow", "candidate")
+
+        evaluation = GesturePipeline(
+            primary=Primary(), shadows={"normalized_heuristic": Shadow()},
+        ).classify_both([], "left")
+
+        self.assertEqual(evaluation.primary.spell, "glacius")
+        self.assertEqual(evaluation.normalized_shadow.spell, "stupefy")
 
     def test_fused_boosts_when_heuristic_and_template_agree(self):
         from cv.gesture_pipeline import ClassificationResult, FusedGestureClassifier

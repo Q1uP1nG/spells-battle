@@ -36,6 +36,9 @@ class CVTrack:
     last_cast_until: float = 0.0
     last_prediction: str = "-"
     last_confidence: float = 0.0
+    last_shadow_prediction: str = "-"
+    last_shadow_confidence: float = 0.0
+    last_pipeline_version: str = ""
     path_length: float = 0.0
     palm_scale: Optional[float] = None
     debug_state: str = "NO HAND"

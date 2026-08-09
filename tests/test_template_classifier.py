@@ -112,6 +112,28 @@ class TemplateClassifierTests(unittest.TestCase):
         d = _dtw_distance(a, b)
         self.assertGreater(d, 0.3)
 
+    def test_batched_dtw_matches_reference_recurrence(self):
+        from cv.template_classifier import _batch_dtw_distances
+
+        rng = np.random.RandomState(7)
+        query = rng.normal(size=(11, 2)).astype(np.float32)
+        templates = rng.normal(size=(4, 9, 2)).astype(np.float32)
+
+        def reference(a, b):
+            n, m = len(a), len(b)
+            table = np.full((n + 1, m + 1), float("inf"), dtype=np.float32)
+            table[0, 0] = 0.0
+            for i in range(1, n + 1):
+                for j in range(1, m + 1):
+                    table[i, j] = np.linalg.norm(a[i - 1] - b[j - 1]) + min(
+                        table[i - 1, j], table[i, j - 1], table[i - 1, j - 1],
+                    )
+            return float(table[n, m]) / (n + m)
+
+        expected = [reference(query, template) for template in templates]
+        actual = _batch_dtw_distances(query, templates)
+        np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6)
+
     def test_incendio_flipped_template_exists(self):
         from cv.template_classifier import TEMPLATES
 

@@ -158,6 +158,41 @@ class CVControllerPalmGateTests(unittest.TestCase):
 
         self.assertIsInstance(pipeline.primary, FusedGestureClassifier)
 
+    def test_preview_and_final_use_same_pipeline_and_version(self):
+        from cv.gesture_pipeline import ClassificationResult, PipelineClassification
+        from models.cv_track import CVTrack
+
+        class RecordingPipeline:
+            version = "shared-test-pipeline"
+
+            def __init__(self):
+                self.calls = []
+
+            def classify_both(self, points, side, context):
+                self.calls.append((list(points), side, context.purpose))
+                return PipelineClassification(
+                    primary=ClassificationResult("lumos", 0.9, "shared", "same"),
+                    shadows={},
+                    pipeline_version=self.version,
+                    purpose=context.purpose,
+                )
+
+        controller = self.make_controller()
+        controller.gesture_pipeline = RecordingPipeline()
+        controller.input_mode = "finger"
+        controller.frame_width = 1280
+        controller.frame_height = 720
+        controller.fps_estimate = 60.0
+        track = CVTrack()
+        points = [[0, 100], [0, 0]]
+
+        preview = controller._run_gesture_pipeline(points, "left", track, "preview")
+        final = controller._run_gesture_pipeline(points, "left", track, "final")
+
+        self.assertEqual(preview.pipeline_version, final.pipeline_version)
+        self.assertEqual(preview.primary, final.primary)
+        self.assertEqual([call[2] for call in controller.gesture_pipeline.calls], ["preview", "final"])
+
     def test_legacy_plain_wand_status_falls_back_to_finger(self):
         controller = self.make_controller()
         controller.available = True

@@ -72,25 +72,52 @@ def _resample_arc_length(pts: np.ndarray, target_n: int) -> Optional[np.ndarray]
 
 
 def _dtw_distance(a: np.ndarray, b: np.ndarray) -> float:
-    n = len(a)
-    m = len(b)
-    if n == 0 or m == 0:
-        return float("inf")
+    distances = _batch_dtw_distances(a, np.asarray([b], dtype=np.float32))
+    return float(distances[0]) if len(distances) else float("inf")
 
-    cost = np.zeros((n, m), dtype=np.float32)
-    for i in range(n):
-        for j in range(m):
-            cost[i, j] = float(np.linalg.norm(a[i] - b[j]))
 
-    dtw = np.full((n + 1, m + 1), float("inf"), dtype=np.float32)
-    dtw[0, 0] = 0.0
+def _batch_dtw_distances(query: np.ndarray, templates: np.ndarray) -> np.ndarray:
+    """Return exact DTW distances for one query against many templates.
 
-    for i in range(1, n + 1):
-        for j in range(1, m + 1):
-            best_prev = min(dtw[i - 1, j], dtw[i, j - 1], dtw[i - 1, j - 1])
-            dtw[i, j] = cost[i - 1, j - 1] + best_prev
+    Cells on one anti-diagonal have no dependencies on each other, so they can
+    be evaluated together across both the diagonal and the template batch. This
+    preserves the original recurrence while removing tens of thousands of
+    Python/NumPy scalar operations from every runtime classification.
+    """
 
-    return float(dtw[n, m]) / float(n + m)
+    query = np.asarray(query, dtype=np.float32)
+    templates = np.asarray(templates, dtype=np.float32)
+    if query.ndim != 2 or len(query) == 0:
+        return np.full((len(templates) if templates.ndim > 0 else 0,), float("inf"))
+    if templates.ndim != 3 or templates.shape[0] == 0 or templates.shape[2] != query.shape[1]:
+        return np.full((templates.shape[0] if templates.ndim == 3 else 0,), float("inf"))
+
+    batch, template_n, _dims = templates.shape
+    query_n = len(query)
+    if template_n == 0:
+        return np.full((batch,), float("inf"))
+
+    cost = np.linalg.norm(
+        query[None, :, None, :] - templates[:, None, :, :],
+        axis=3,
+    ).astype(np.float32)
+    dtw = np.full((batch, query_n + 1, template_n + 1), float("inf"), dtype=np.float32)
+    dtw[:, 0, 0] = 0.0
+
+    for diagonal in range(2, query_n + template_n + 1):
+        i_start = max(1, diagonal - template_n)
+        i_stop = min(query_n, diagonal - 1)
+        if i_start > i_stop:
+            continue
+        i = np.arange(i_start, i_stop + 1)
+        j = diagonal - i
+        best_previous = np.minimum(
+            np.minimum(dtw[:, i - 1, j], dtw[:, i, j - 1]),
+            dtw[:, i - 1, j - 1],
+        )
+        dtw[:, i, j] = cost[:, i - 1, j - 1] + best_previous
+
+    return dtw[:, query_n, template_n].astype(np.float64) / float(query_n + template_n)
 
 
 def _flip_x(points: np.ndarray) -> np.ndarray:
@@ -210,14 +237,27 @@ class DataTemplateClassifier:
             self.load_error = "template pack has no prototypes"
 
     def _best_for_spell(self, normalized: np.ndarray, spell: str) -> float:
-        flipped = _flip_x(normalized)
-        best = float("inf")
-        for prototype in self._prototypes[spell]:
-            best = min(
-                best,
-                _dtw_distance(normalized, prototype),
-                _dtw_distance(flipped, prototype),
-            )
+        prototypes = np.stack(self._prototypes[spell]).astype(np.float32)
+        direct = _batch_dtw_distances(normalized, prototypes)
+        flipped = _batch_dtw_distances(_flip_x(normalized), prototypes)
+        return float(np.minimum(direct, flipped).min())
+
+    def _best_distances(self, normalized: np.ndarray) -> dict[str, float]:
+        labels = []
+        prototypes = []
+        for spell, spell_prototypes in self._prototypes.items():
+            for prototype in spell_prototypes:
+                labels.append(spell)
+                prototypes.append(prototype)
+        if not prototypes:
+            return {}
+        prototype_batch = np.stack(prototypes).astype(np.float32)
+        direct = _batch_dtw_distances(normalized, prototype_batch)
+        flipped = _batch_dtw_distances(_flip_x(normalized), prototype_batch)
+        distances = np.minimum(direct, flipped)
+        best = {spell: float("inf") for spell in self._prototypes}
+        for spell, distance in zip(labels, distances):
+            best[spell] = min(best[spell], float(distance))
         return best
 
     def classify(self, points, side) -> ClassificationResult:
@@ -243,8 +283,9 @@ class DataTemplateClassifier:
         best_spell = None
         best_distance = float("inf")
         best_threshold = 1.0
+        distances = self._best_distances(normalized)
         for spell in self._prototypes:
-            distance = self._best_for_spell(normalized, spell)
+            distance = distances[spell]
             threshold = max(self._thresholds.get(spell, DTW_ACCEPT_THRESHOLD), 1e-6)
             if distance / threshold < best_distance / best_threshold:
                 best_spell = spell

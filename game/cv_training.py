@@ -39,6 +39,7 @@ EVALUATION_METADATA_FIELDS = (
     "fps_estimate",
     "palm_scale",
     "classifier_version",
+    "pipeline_version",
     "review_status",
     "dataset_partition",
     "derived_from_sample_id",

@@ -111,6 +111,7 @@ def load_review_candidates(log_paths, min_path_length=55.0):
                 "fps_estimate",
                 "palm_scale",
                 "classifier_version",
+                "pipeline_version",
                 "dataset_partition",
                 "derived_from_sample_id",
             ):
@@ -151,6 +152,7 @@ def append_review_record(output_path, sample, label, review_status):
         "fps_estimate",
         "palm_scale",
         "classifier_version",
+        "pipeline_version",
         "dataset_partition",
         "derived_from_sample_id",
     ):

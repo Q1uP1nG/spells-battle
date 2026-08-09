@@ -113,6 +113,7 @@ class ReviewGestureSamplesTests(unittest.TestCase):
                     "user_id": "player-a",
                     "device_id": "camera-a",
                     "palm_scale": 110.0,
+                    "pipeline_version": "gesture-pipeline-v2-normalized-shadow",
                 },
                 {
                     "attempt_id": 8,
@@ -137,6 +138,7 @@ class ReviewGestureSamplesTests(unittest.TestCase):
         self.assertEqual(samples[0]["user_id"], "player-a")
         self.assertEqual(samples[0]["device_id"], "camera-a")
         self.assertEqual(samples[0]["palm_scale"], 110.0)
+        self.assertEqual(samples[0]["pipeline_version"], "gesture-pipeline-v2-normalized-shadow")
         self.assertNotIn("shadow", samples[0])
         self.assertNotIn("agreement", samples[0])
 

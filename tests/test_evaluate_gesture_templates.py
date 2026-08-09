@@ -65,6 +65,32 @@ class EvaluateGestureTemplatesTests(unittest.TestCase):
             4,
         )
 
+    def test_evaluation_reports_normalized_shadow_and_fallback_source(self):
+        from tools.evaluate_gesture_templates import build_samples, evaluate_samples
+
+        entries = [
+            {
+                "label": "incendio",
+                "points": [[0, 0], [70, 0], [140, 0], [210, 0], [280, 0], [350, 0]],
+                "palm_scale": 100.0,
+                "frame_width": 1280,
+                "frame_height": 720,
+                "fps_estimate": 60.0,
+            },
+            {
+                "label": "lumos",
+                "points": [[0, 350], [0, 280], [0, 210], [0, 140], [0, 70], [0, 0]],
+            },
+        ]
+
+        summary = evaluate_samples(build_samples(entries))
+        metric = summary["normalized_heuristic_shadow"]
+
+        self.assertEqual(metric["total"], 2)
+        self.assertEqual(metric["normalization_sources"]["palm_scale"], 1)
+        self.assertEqual(metric["normalization_sources"]["trajectory_span_fallback"], 1)
+        self.assertIn("latency_ms", metric)
+
     def test_evaluate_samples_reports_data_template_and_fused_accuracy(self):
         from cv.gesture_pipeline import ClassificationResult
         from tools.evaluate_gesture_templates import build_samples, evaluate_samples

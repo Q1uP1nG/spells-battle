@@ -29,7 +29,12 @@ from cv.gesture_classifier import (
     extract_gesture_features,
     score_gesture_match,
 )
-from cv.gesture_pipeline import FusedGestureClassifier
+from cv.gesture_pipeline import (
+    FusedGestureClassifier,
+    GestureClassificationContext,
+    NORMALIZED_FEATURE_VERSION,
+    NormalizedHeuristicGestureClassifier,
+)
 from cv.template_classifier import DataTemplateClassifier
 from cv.template_classifier import _dtw_distance, _normalize_trajectory, template_label_to_spell
 from tools.gesture_corpus import CanonicalCorpus, load_canonical_corpus
@@ -62,6 +67,10 @@ class GestureSample:
     device_id: str = ""
     derived_from_sample_id: str = ""
     dataset_partition: str = "development"
+    frame_width: Optional[int] = None
+    frame_height: Optional[int] = None
+    fps_estimate: Optional[float] = None
+    palm_scale: Optional[float] = None
 
 
 def load_entries(path: str | Path) -> list[dict]:
@@ -113,6 +122,10 @@ def build_samples(entries: list[dict]) -> list[GestureSample]:
                 device_id=str(entry.get("device_id") or ""),
                 derived_from_sample_id=str(entry.get("derived_from_sample_id") or ""),
                 dataset_partition=str(entry.get("dataset_partition") or "development"),
+                frame_width=entry.get("frame_width"),
+                frame_height=entry.get("frame_height"),
+                fps_estimate=entry.get("fps_estimate"),
+                palm_scale=entry.get("palm_scale"),
             )
         )
     return samples
@@ -137,6 +150,10 @@ def build_samples_from_corpus(
             "device_id": sample.metadata.get("device_id"),
             "derived_from_sample_id": sample.metadata.get("derived_from_sample_id"),
             "dataset_partition": sample.dataset_partition,
+            "frame_width": sample.metadata.get("frame_width"),
+            "frame_height": sample.metadata.get("frame_height"),
+            "fps_estimate": sample.metadata.get("fps_estimate"),
+            "palm_scale": sample.metadata.get("palm_scale"),
         }
         for sample in corpus.samples
         if dataset_partition == "all" or sample.dataset_partition == dataset_partition
@@ -331,9 +348,11 @@ def evaluate_samples(
 ) -> dict:
     data_template_classifier = data_template_classifier or DataTemplateClassifier()
     fused_classifier = FusedGestureClassifier(template=data_template_classifier)
+    normalized_classifier = NormalizedHeuristicGestureClassifier()
     methods = {
         "logged_primary": [],
         "current_heuristic": [],
+        "normalized_heuristic_shadow": [],
         "logged_shadow": [],
         "real_template": [],
         "data_template": [],
@@ -345,11 +364,24 @@ def evaluate_samples(
     distance_cache = distance_cache if distance_cache is not None else {}
     timings = defaultdict(list)
     template_margins = []
+    normalization_sources = Counter()
 
     for i, sample in enumerate(samples):
         started = perf_counter()
         current_spell, current_conf = classify_cv_gesture(sample.points, "left")
         timings["current_heuristic"].append((perf_counter() - started) * 1000.0)
+        context = GestureClassificationContext(
+            palm_scale=sample.palm_scale,
+            frame_width=sample.frame_width,
+            frame_height=sample.frame_height,
+            fps_estimate=sample.fps_estimate,
+            input_mode=sample.input_mode,
+            purpose="evaluation",
+        )
+        started = perf_counter()
+        normalized_shadow = normalized_classifier.classify(sample.points, "left", context)
+        timings["normalized_heuristic_shadow"].append((perf_counter() - started) * 1000.0)
+        normalization_sources[normalized_shadow.features.scale_source] += 1
         template = classify_real_template(samples, i, distance_cache)
         template_margins.append(template["margin"])
         started = perf_counter()
@@ -367,6 +399,7 @@ def evaluate_samples(
         )
         predictions = {
             "current_heuristic": current_spell,
+            "normalized_heuristic_shadow": normalized_shadow.spell,
             "real_template": template_label_to_spell(template["spell"]),
             "data_template": data_template.spell,
             "fused": fused.spell,
@@ -391,6 +424,7 @@ def evaluate_samples(
                     "data_template_reason": data_template.reason,
                     "fused_reason": fused.reason,
                     "current_confidence": current_conf,
+                    "normalized_shadow_reason": normalized_shadow.reason,
                     "points": len(sample.points),
                 })
 
@@ -403,6 +437,9 @@ def evaluate_samples(
     for method, records in method_records.items():
         method_summaries[method]["breakdowns"] = _metric_breakdowns(records)
     method_summaries["real_template"]["margin"] = _distribution(template_margins)
+    method_summaries["normalized_heuristic_shadow"]["normalization_sources"] = dict(
+        sorted(normalization_sources.items())
+    )
     return {
         "total": len(samples),
         "methods": method_summaries,
@@ -667,6 +704,7 @@ def format_summary(summary: dict) -> str:
     method_order = [
         "logged_primary",
         "current_heuristic",
+        "normalized_heuristic_shadow",
         "logged_shadow",
         "real_template",
         "grouped_template",
@@ -693,6 +731,9 @@ def format_summary(summary: dict) -> str:
             lines.append(
                 f"  margin p50={margin['p50']:.3f} p95={margin['p95']:.3f}"
             )
+        normalization_sources = result.get("normalization_sources") or {}
+        if normalization_sources:
+            lines.append(f"  normalization_sources={normalization_sources}")
         for label, data in sorted(result["by_label"].items()):
             label_total = max(data["total"], 1)
             lines.append(f"  {label}: {data['correct']}/{data['total']} ({data['correct'] / label_total:.1%})")
@@ -708,7 +749,15 @@ def format_summary(summary: dict) -> str:
         lines.append("Circle/Overload focus:")
         for label in focus_labels:
             lines.append(f"  {label} -> {template_label_to_spell(label)}:")
-            for method in ["current_heuristic", "data_template", "fused", "real_template"]:
+            for method in [
+                "current_heuristic",
+                "normalized_heuristic_shadow",
+                "data_template",
+                "fused",
+                "real_template",
+            ]:
+                if method not in summary:
+                    continue
                 data = summary[method]["by_label"].get(label, {"correct": 0, "total": 0})
                 total = max(data["total"], 1)
                 lines.append(
@@ -861,6 +910,7 @@ def write_evaluation_artifacts(output_dir, summary, corpus, command):
         "classifier_versions": {
             "heuristic": f"source@{commit}",
             "fused": f"source@{commit}",
+            "normalized_heuristic_shadow": NORMALIZED_FEATURE_VERSION,
             "real_template": "leave-one-out-dtw-v1",
         },
         "template_pack": _template_pack_manifest(),
