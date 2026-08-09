@@ -141,3 +141,75 @@ Direct human-input cast call audit
 Phase 2: extract a deterministic `BattleEngine`, introduce domain `BattleEvent`
 outputs, and retain `BattleGame` as a compatibility facade that combines the engine
 with local presentation behavior.
+
+## Phase 2 - Complete
+
+Date: 2026-08-09
+
+### Implementation summary
+
+- Extracted `BattleEngine` as the authoritative battle rules component.
+- Removed wall-clock, particle, audio, renderer, camera, OpenCV, and Pygame
+  dependencies from the authoritative engine; callers inject `dt` and match time.
+- Added immutable, structured `BattleEvent` values with monotonic event IDs.
+- Added stable monotonic `projectile_id` allocation for authoritative projectiles.
+- Converted cast feedback, healing completion, clashes, shield hits, player hits,
+  and round completion into domain events.
+- Rebuilt `BattleGame` as a backward-compatible local presentation adapter that
+  consumes events immediately and preserves particles, audio cues, messages,
+  shockwaves, screen shake, hit flash, and existing public methods.
+- Exported `BattleEngine` and `BattleEvent` through the lazy `game` package API.
+
+### Modified files
+
+- `game/battle_engine.py`
+- `game/events.py`
+- `game/battle.py`
+- `game/__init__.py`
+- `models/projectile.py`
+- `tests/test_battle_engine.py`
+- `docs/remote_duel_progress.md`
+
+### Architecture impact
+
+The same battle rules can now run in a headless server process without importing
+client presentation or device dependencies. The local application retains its old
+`BattleGame` surface, while authoritative changes are emitted as deterministic
+facts that can later be serialized and replayed by remote clients.
+
+### Verification
+
+```text
+Phase 2 deterministic/headless tests
+  Ran 6 tests
+  OK
+
+Targeted battle feedback, interaction, mode, and PVE tests
+  Ran 62 tests
+  OK
+
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 388 tests in 13.032s
+  OK
+
+Real log snapshot before/after the full test suite
+  REAL_LOGS_UNCHANGED=True
+```
+
+### Remaining risks
+
+- Domain event payloads are Python values but do not yet have a versioned wire
+  schema or validation. Phase 3 adds protocol codecs and round-trip coverage.
+- Snapshots do not yet exist, so remote clients cannot reconstruct authoritative
+  state after joining or reconnecting.
+- Presentation randomness is intentionally local and nondeterministic; it has no
+  effect on authoritative state.
+
+### Next phase
+
+Phase 3: define versioned command/event/snapshot DTOs and strict JSON codecs,
+including required-field validation, forward-compatible optional fields, and
+round-trip tests.

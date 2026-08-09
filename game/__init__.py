@@ -1,5 +1,7 @@
 __all__ = [
     "BattleGame",
+    "BattleEngine",
+    "BattleEvent",
     "BattleSession",
     "CastIntent",
     "CastSubmission",
@@ -15,6 +17,14 @@ def __getattr__(name):
         from game.battle import BattleGame
 
         return BattleGame
+    if name == "BattleEngine":
+        from game.battle_engine import BattleEngine
+
+        return BattleEngine
+    if name == "BattleEvent":
+        from game.events import BattleEvent
+
+        return BattleEvent
     if name in ("GameMode", "ModeRunner"):
         from game.mode import GameMode, ModeRunner
 

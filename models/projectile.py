@@ -14,3 +14,4 @@ class Projectile:
     color: tuple
     life: float = 2.4
     active: bool = True
+    projectile_id: int = 0
