@@ -1,5 +1,7 @@
 import unittest
 from pathlib import Path
+import subprocess
+import sys
 
 import yaml
 
@@ -44,6 +46,20 @@ class ServerDeploymentTests(unittest.TestCase):
         self.assertIn("{$SPELLS_DOMAIN}", caddyfile)
         self.assertIn("reverse_proxy spells-server:8765", caddyfile)
         self.assertIn("Strict-Transport-Security", caddyfile)
+
+    def test_headless_server_import_does_not_load_client_device_dependencies(self):
+        command = (
+            "import sys; import server.app; "
+            "assert 'cv2' not in sys.modules; "
+            "assert 'pygame' not in sys.modules; "
+            "assert 'mediapipe' not in sys.modules"
+        )
+
+        result = subprocess.run(
+            [sys.executable, "-c", command], capture_output=True, text=True, check=False
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

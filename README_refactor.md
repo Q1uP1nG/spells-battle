@@ -19,6 +19,18 @@ Run from this directory:
 python main.py
 ```
 
+Remote Duel architecture, local runbook, and Alibaba Cloud deployment:
+
+```text
+docs/remote_duel_refactor_architecture.md
+docs/remote_duel_runbook.md
+deploy/README.md
+```
+
+Start a local authoritative server with `python -m server.app`, then choose menu
+option `5` in two clients. Set `SPELLS_SERVER_URL` to the deployed `wss://` endpoint
+for different-network play.
+
 Compatibility entrypoint:
 
 ```bash

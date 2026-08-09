@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from dataclasses import dataclass, field
 import logging
 import json
 
@@ -15,29 +14,19 @@ from network.protocol import (
     ProtocolError,
     cast_intent_from_payload,
     decode_message,
-    encode_message,
     event_to_payload,
     snapshot_to_payload,
 )
+from server.connection import ClientConnection
 from server.config import ServerConfig
+from server.logging import configure_logging
 from server.room import RoomError
 from server.room_manager import RoomManager
 
 
 LOGGER = logging.getLogger("spells_server")
-
-
-@dataclass
-class ClientConnection:
-    websocket: object
-    room_code: str | None = None
-    player_index: int | None = None
-    send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-
-    async def send(self, message_type, payload, request_id=None):
-        raw = encode_message(message_type, payload, request_id=request_id)
-        async with self.send_lock:
-            await self.websocket.send(raw)
+LOGGER.addHandler(logging.NullHandler())
+LOGGER.propagate = False
 
 
 class BattleServer:
@@ -47,6 +36,7 @@ class BattleServer:
             reconnect_timeout=self.config.reconnect_timeout,
             room_idle_timeout=self.config.room_idle_timeout,
             max_casts_per_second=self.config.max_casts_per_second,
+            max_rooms=self.config.max_rooms,
         )
         self._connections = {}
         self._server = None
@@ -85,7 +75,8 @@ class BattleServer:
             self._server = None
 
     async def _handle_connection(self, websocket):
-        connection = ClientConnection(websocket)
+        connection = ClientConnection(websocket, queue_limit=self.config.client_send_queue)
+        connection.start_writer()
         self._connections[websocket] = connection
         try:
             async for raw in websocket:
@@ -93,11 +84,21 @@ class BattleServer:
         except ConnectionClosed:
             pass
         finally:
+            await connection.stop_writer()
             self._connections.pop(websocket, None)
             if connection.room_code is not None and connection.player_index is not None:
                 try:
                     room = self.rooms.get(connection.room_code)
                     room.disconnect(connection.player_index, asyncio.get_running_loop().time())
+                    LOGGER.info(
+                        "player disconnected",
+                        extra={
+                            "context": {
+                                "room_code": room.room_code,
+                                "player_index": connection.player_index,
+                            }
+                        },
+                    )
                     await self._broadcast_room_state(room)
                 except RoomError:
                     pass
@@ -106,7 +107,12 @@ class BattleServer:
         if request.path != "/health":
             return None
         body = json.dumps(
-            {"status": "ok", "rooms": len(self.rooms.rooms)}, separators=(",", ":")
+            {
+                "status": "ok",
+                "rooms": len(self.rooms.rooms),
+                "connections": len(self._connections),
+            },
+            separators=(",", ":"),
         ).encode("utf-8")
         return Response(
             200,
@@ -134,6 +140,10 @@ class BattleServer:
                 self._ensure_unbound(connection)
                 room, seat = self.rooms.create_room(now)
                 self._bind(connection, room.room_code, seat.player_index)
+                LOGGER.info(
+                    "room created",
+                    extra={"context": {"room_code": room.room_code, "match_id": room.match_id}},
+                )
                 await connection.send(
                     "room_created",
                     {
@@ -152,6 +162,15 @@ class BattleServer:
                 room_code = self._required_text(payload, "room_code").upper()
                 room, seat = self.rooms.join_room(room_code, now)
                 self._bind(connection, room.room_code, seat.player_index)
+                LOGGER.info(
+                    "room joined",
+                    extra={
+                        "context": {
+                            "room_code": room.room_code,
+                            "player_index": seat.player_index,
+                        }
+                    },
+                )
                 await connection.send(
                     "room_joined",
                     {
@@ -171,6 +190,15 @@ class BattleServer:
                 seat = room.reconnect(self._required_text(payload, "reconnect_token"), now)
                 self._drop_existing_connection(room.room_code, seat.player_index, connection)
                 self._bind(connection, room.room_code, seat.player_index)
+                LOGGER.info(
+                    "player reconnected",
+                    extra={
+                        "context": {
+                            "room_code": room.room_code,
+                            "player_index": seat.player_index,
+                        }
+                    },
+                )
                 await connection.send(
                     "room_joined",
                     {
@@ -221,6 +249,16 @@ class BattleServer:
                 raise ProtocolError("invalid_command", f"message type is not a client command: {message_type}")
         except (ProtocolError, RoomError, KeyError, ValueError) as exc:
             code = getattr(exc, "code", "invalid_request")
+            LOGGER.warning(
+                "request rejected",
+                extra={
+                    "context": {
+                        "room_code": connection.room_code,
+                        "player_index": connection.player_index,
+                        "error_code": code,
+                    }
+                },
+            )
             await connection.send("error", {"code": code, "message": str(exc)}, request_id)
 
     async def _tick_loop(self):
@@ -321,7 +359,7 @@ def main():
                 "port": args.port if args.port is not None else config.port,
             }
         )
-    logging.basicConfig(level=getattr(logging, config.log_level.upper()))
+    configure_logging(config.log_level)
     asyncio.run(run_server(config))
 
 

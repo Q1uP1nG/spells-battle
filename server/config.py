@@ -15,6 +15,8 @@ class ServerConfig:
     max_message_size: int = 16_384
     max_casts_per_second: int = 12
     log_level: str = "INFO"
+    max_rooms: int = 1000
+    client_send_queue: int = 64
 
     def __post_init__(self):
         if not self.host:
@@ -31,6 +33,8 @@ class ServerConfig:
             raise ValueError("server limits are invalid")
         if self.log_level.upper() not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
             raise ValueError("log_level is invalid")
+        if self.max_rooms < 1 or self.client_send_queue < 8:
+            raise ValueError("server capacity limits are invalid")
 
     @classmethod
     def from_env(cls):
@@ -44,4 +48,6 @@ class ServerConfig:
             max_message_size=int(os.getenv("SPELLS_SERVER_MAX_MESSAGE_SIZE", "16384")),
             max_casts_per_second=int(os.getenv("SPELLS_SERVER_MAX_CASTS_PER_SECOND", "12")),
             log_level=os.getenv("SPELLS_SERVER_LOG_LEVEL", "INFO").upper(),
+            max_rooms=int(os.getenv("SPELLS_SERVER_MAX_ROOMS", "1000")),
+            client_send_queue=int(os.getenv("SPELLS_SERVER_CLIENT_SEND_QUEUE", "64")),
         )

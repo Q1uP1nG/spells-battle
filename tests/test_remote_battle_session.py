@@ -134,6 +134,17 @@ class RemoteBattleSessionTests(unittest.TestCase):
 
         self.assertEqual(client.sent, [("rematch", {}, None)])
 
+    def test_ping_updates_rtt_metric(self):
+        session, client = self.make_session()
+        session.state = RemoteSessionState.WAITING
+
+        session.update(now=5.0, dt=0.0)
+        self.assertEqual(client.sent[-1][0], "ping")
+        client.messages.put({"type": "pong", "payload": {"echo": 5.0}})
+        session.update(now=5.125, dt=0.0)
+
+        self.assertEqual(session.rtt_ms, 125.0)
+
 
 class RemoteBattleSessionIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):

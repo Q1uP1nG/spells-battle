@@ -10,13 +10,22 @@ ROOM_ALPHABET = string.ascii_uppercase + string.digits
 
 
 class RoomManager:
-    def __init__(self, reconnect_timeout=45.0, room_idle_timeout=900.0, max_casts_per_second=12):
+    def __init__(
+        self,
+        reconnect_timeout=45.0,
+        room_idle_timeout=900.0,
+        max_casts_per_second=12,
+        max_rooms=1000,
+    ):
         self.reconnect_timeout = reconnect_timeout
         self.room_idle_timeout = room_idle_timeout
         self.max_casts_per_second = max_casts_per_second
+        self.max_rooms = int(max_rooms)
         self.rooms = {}
 
     def create_room(self, now):
+        if len(self.rooms) >= self.max_rooms:
+            raise RoomError("server_capacity", "server room capacity reached")
         room_code = self._new_code()
         room = Room(
             room_code,

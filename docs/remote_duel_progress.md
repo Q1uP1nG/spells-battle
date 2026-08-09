@@ -445,3 +445,75 @@ host before public release.
 Phase 7: harden malformed/slow-client behavior, add structured redacted server logs,
 perform dependency and architecture audits, consolidate runbooks, and execute the
 final regression gate.
+
+## Phase 7 - Complete (code and local verification)
+
+Date: 2026-08-09
+
+### Implementation summary
+
+- Added application RTT measurement and a visible remote latency/state indicator.
+- Added reconnect counters for diagnostics while retaining pause-on-disconnect.
+- Isolated every server connection behind a bounded asynchronous send queue; a slow
+  client is closed with retry-later status instead of blocking the fixed battle tick.
+- Added configurable room-count and per-client send-queue capacity limits on top of
+  existing message-size and cast-rate limits.
+- Added structured JSON logging with recursive redaction of reconnect tokens,
+  camera/frame/image fields, and related sensitive context.
+- Verified malformed JSON and protocol-version mismatch over real WebSockets.
+- Added a headless server dependency/import audit and confirmed the server doesn't
+  load OpenCV, MediaPipe, Pygame, renderer, camera, or audio components.
+- Added the complete local/two-client/public acceptance runbook and linked it from
+  the project README.
+- Deliberately left Protego network grace at zero and retained JSON rather than
+  MessagePack because no measured public-network evidence justifies fairness or
+  protocol changes yet.
+
+### Final local verification
+
+```text
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 434 tests in 17.373s (final post-hardening run)
+  OK
+
+Repeated real-WebSocket integration suite (two additional consecutive runs)
+  6 tests OK
+  6 tests OK
+
+Real log snapshot before/after all tests
+  REAL_LOGS_UNCHANGED=True
+
+python -m pip install --dry-run -r requirements-server.txt
+  PASS (numpy and websockets 16.1.1 satisfied)
+
+git diff --check
+  PASS
+```
+
+The shared Conda environment's global `pip check` reports unrelated pre-existing
+missing optional dependencies for Azure Identity, EasyOCR, MCP, MSAL, and PDFMiner.
+No project dependency is named by those errors, and the server-specific dependency
+resolution succeeds; the shared environment was intentionally not mutated to repair
+unrelated tools.
+
+### Architecture audit
+
+- Human keyboard and CV casts enter through session adapters; no direct calls remain
+  in `main.py` or `cv/`.
+- Direct rule calls remain only at intended authority boundaries: local session, PVE
+  authority, and server battle session.
+- Server identity comes only from the connection-bound seat.
+- Protocol payloads contain commands/events/snapshots and never camera data.
+- Offline modes import and run without a server.
+
+### External acceptance still required
+
+All repository phases are implemented and locally verified. The architecture's final
+definition also requires two physical devices on different networks to connect
+through a real Alibaba Cloud `wss://` endpoint. This cannot be completed without an
+ECS instance, public domain/DNS, and authorization to deploy. Follow
+`deploy/README.md` and `docs/remote_duel_runbook.md`; record the public acceptance
+results here after deployment.

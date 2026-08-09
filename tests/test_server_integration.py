@@ -73,7 +73,20 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         status, payload = await asyncio.to_thread(fetch_health)
 
         self.assertEqual(status, 200)
-        self.assertEqual(payload, {"status": "ok", "rooms": 0})
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["rooms"], 0)
+        self.assertEqual(payload["connections"], 2)
+
+    async def test_malformed_json_and_version_mismatch_return_explicit_errors(self):
+        await self.first.send("not-json")
+        invalid = await self.receive_until(self.first, "error")
+        self.assertEqual(invalid["payload"]["code"], "invalid_json")
+
+        await self.first.send(
+            json.dumps({"protocol_version": 999, "type": "ping", "payload": {}})
+        )
+        mismatch = await self.receive_until(self.first, "error")
+        self.assertEqual(mismatch["payload"]["code"], "version_mismatch")
 
     async def test_two_clients_share_authoritative_identity_and_initial_snapshot(self):
         created, joined, first_snapshot, second_snapshot = await self.create_join_and_ready()

@@ -45,6 +45,9 @@ class RemoteBattleSession:
         self._next_sequence_value = 1
         self._requested_action = None
         self.interpolator = SnapshotInterpolator()
+        self.rtt_ms = None
+        self.disconnect_count = 0
+        self._last_ping_at = 0.0
 
     def start(self):
         self.state = RemoteSessionState.CONNECTING
@@ -91,6 +94,18 @@ class RemoteBattleSession:
     def update(self, now, dt):
         for message in self.client.drain():
             self._handle_message(message, now)
+        if (
+            self.state
+            in (
+                RemoteSessionState.WAITING,
+                RemoteSessionState.READY,
+                RemoteSessionState.RUNNING,
+                RemoteSessionState.ROUND_OVER,
+            )
+            and now - self._last_ping_at >= 5.0
+        ):
+            self._last_ping_at = float(now)
+            self.client.send("ping", {"time": float(now)})
         for projectile in self.game.projectiles:
             position = self.interpolator.projectile_positions(now).get(projectile.projectile_id)
             if position is not None:
@@ -113,6 +128,8 @@ class RemoteBattleSession:
             if transport_state == "CONNECTING":
                 self.state = RemoteSessionState.CONNECTING
             elif transport_state == "RECONNECTING":
+                if self.state != RemoteSessionState.RECONNECTING:
+                    self.disconnect_count += 1
                 self.state = RemoteSessionState.RECONNECTING
             elif transport_state == "CONNECTED" and self.reconnect_token and self.room_code:
                 self.client.send(
@@ -124,6 +141,8 @@ class RemoteBattleSession:
                 )
             elif transport_state == "CONNECTED":
                 self.status_message = "CONNECTED"
+            elif transport_state in ("DISCONNECTED", "CLOSED"):
+                self.state = RemoteSessionState.DISCONNECTED
             return
         if message_type == "transport_error":
             self.last_error = payload.get("message", "network error")
@@ -148,6 +167,11 @@ class RemoteBattleSession:
         if message_type == "battle_event":
             event = replace(event_from_payload(payload), match_time=float(now))
             self.game._on_event(event)
+            return
+        if message_type == "pong":
+            echoed = payload.get("echo")
+            if isinstance(echoed, (int, float)):
+                self.rtt_ms = max(0.0, (float(now) - float(echoed)) * 1000.0)
             return
         if message_type == "error":
             self.last_error = payload.get("message", "server rejected request")

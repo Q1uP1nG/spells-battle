@@ -282,6 +282,9 @@ def main():
             cv_controller.draw(frame, now, show_debug=cv_controller.verbose_debug)
 
             cv_status = cv_controller.status
+            if runner.mode == GameMode.REMOTE_DUEL:
+                latency = "--" if remote_session.rtt_ms is None else f"{remote_session.rtt_ms:.0f}ms"
+                cv_status = f"{cv_status} | NET {remote_session.state.value} {latency}"
             if runner.mode == GameMode.PVE and runner.pve_paused:
                 state = "READY" if not runner.pve_has_started else "PAUSED"
                 cv_status = f"{cv_status} | {state}"

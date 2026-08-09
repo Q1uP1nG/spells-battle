@@ -1,0 +1,77 @@
+# Remote Duel 本地运行与验收手册
+
+## 架构边界
+
+- 客户端：摄像头、MediaPipe/CV、键盘、渲染、声音和粒子。
+- 服务端：房间、身份、法力、冷却、状态、弹体、碰撞、伤害、胜负和重连。
+- 网络：仅 JSON 命令、领域事件和完整快照；不发送视频、图像、手部关键点、NumPy 对象或 pickle。
+- 离线模式不连接服务器，Solo、PVE、本地 Duel、CV Training 保持原入口。
+
+## 安装
+
+客户端完整依赖：
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+纯服务端依赖：
+
+```powershell
+python -m pip install -r requirements-server.txt
+```
+
+## 本机启动
+
+终端 1：
+
+```powershell
+$env:SPELLS_SERVER_HOST = "127.0.0.1"
+$env:SPELLS_SERVER_PORT = "8765"
+python -m server.app
+```
+
+终端 2 和终端 3：
+
+```powershell
+$env:SPELLS_SERVER_URL = "ws://127.0.0.1:8765"
+python main.py
+```
+
+双方进入菜单 `5 Remote Duel`：
+
+1. 设备 A 按 `C` 创建房间，并把六位房间码告诉设备 B。
+2. 设备 B 按 `J`，输入房间码并按 Enter。
+3. 双方用 `A/F` 选择自己的角色，再按 `R` ready。
+4. 战斗中本机使用 `Q/W/E/R/T` 或 CV；服务器只接受本机被分配座位的输入。
+5. 回合结束双方按 Space 请求 rematch；只有双方都确认才开始新回合。
+
+## 自动验证
+
+```powershell
+python -m compileall -q .
+python -m unittest discover -s tests
+```
+
+网络集成测试在随机本地端口启动真实 WebSocket 服务，覆盖两个客户端、相同快照、完整回合、重复 sequence、心跳、断线暂停、重连和 rematch，不依赖公网、摄像头、音频或 GUI。
+
+## 公网验收清单
+
+部署步骤见 `deploy/README.md`。发布前必须在两台不同网络的 Windows 设备上确认：
+
+- `https://域名/health` 返回 ok；
+- 两端可使用房间码进入同一局；
+- 角色、HP、MP、状态、弹体、碰撞、胜负一致；
+- finger 与 bright-wand CV 至少各完成一局，keyboard/CV 混用正常；
+- 主动断网后双方暂停，45 秒内恢复网络可继续；
+- 超过重连时限、版本不匹配和非法房间码均显示可理解错误；
+- 连续完成至少三局 rematch；
+- Solo、PVE、本地 Duel、CV Training 在服务器关闭时仍可运行。
+
+## 首版边界
+
+- 房间在单进程内存中，服务重启会结束当前对局。
+- 没有账户、公开匹配、排行榜、聊天、数据库或 Redis。
+- 不做伤害/命中的客户端预测；本地只立即显示“等待服务器确认”。
+- Protego 网络输入宽限保持为 0。只有真实公网 RTT 数据证明需要时，才应把它做成服务端配置并重新评估公平性。
+- JSON/Deflate 已足够首版；未证明是瓶颈前不引入 MessagePack。

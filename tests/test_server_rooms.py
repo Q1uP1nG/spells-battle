@@ -87,6 +87,15 @@ class ServerRoomTests(unittest.TestCase):
         self.assertNotEqual(room.match_id, previous_match_id)
         self.assertEqual(room.session.server_tick, 0)
 
+    def test_room_capacity_is_explicitly_limited(self):
+        manager = RoomManager(max_rooms=1)
+        manager.create_room(1.0)
+
+        with self.assertRaises(RoomError) as error:
+            manager.create_room(2.0)
+
+        self.assertEqual(error.exception.code, "server_capacity")
+
 
 if __name__ == "__main__":
     unittest.main()
