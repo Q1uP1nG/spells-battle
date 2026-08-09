@@ -323,3 +323,68 @@ Real log snapshot before/after the full test suite
 Phase 5: add a queue-isolated background client, `RemoteBattleSession`, snapshot
 interpolation/presentation, and Remote Duel menu/create/join flow while retaining all
 offline modes.
+
+## Phase 5 - Complete
+
+Date: 2026-08-09
+
+### Implementation summary
+
+- Added a daemon-thread WebSocket client with thread-safe incoming/outgoing queues;
+  the network worker never imports or mutates OpenCV/UI objects.
+- Added explicit transport and remote-session states for connecting, waiting, ready,
+  running, reconnecting, round-over, disconnected, and closed behavior.
+- Added `RemoteBattleSession` with the same cast request boundary used by keyboard
+  and CV. Remote casts return pending and never pre-apply authoritative results.
+- Applied snapshots to a render-only `BattleGame` view and consumed server events
+  through the existing local particle/audio/flash presentation adapter.
+- Added stable-ID projectile interpolation between the latest two snapshots and
+  stale-snapshot rejection.
+- Added Remote Duel to the menu (`5`), an in-window create/join room-code lobby,
+  local-seat character selection, ready flow, and server status/error display.
+- Bound both keyboard and CV input to the seat assigned by the server; P2 local keys
+  cannot control a remote opponent.
+- Kept `SPELLS_SERVER_URL` configurable with a local development default.
+- Added two-party rematch readiness and verified a second round starts with a new
+  match ID and reset authoritative state.
+
+### Verification
+
+```text
+Remote session unit and real two-client tests
+  Ran 7 tests
+  OK
+
+Snapshot interpolation tests
+  Ran 2 tests
+  OK
+
+Main mode and menu tests
+  Ran 35 tests
+  OK
+
+python -m compileall -q .
+  PASS
+
+python -m unittest discover -s tests
+  Ran 422 tests in 15.557s
+  OK
+
+Real log snapshot before/after the full test suite
+  REAL_LOGS_UNCHANGED=True
+```
+
+### Remaining risks
+
+- Automated tests exercise real sockets and queue isolation, but physical two-device
+  camera/audio acceptance still requires the deployment endpoint from Phase 6.
+- Reconnect credentials currently live only in process memory, so a full client
+  process restart cannot reclaim a seat. Short network interruptions are supported.
+- The remote lobby intentionally uses keyboard room-code entry; richer mouse/text UI
+  can be added later without changing the protocol.
+
+### Next phase
+
+Phase 6: package the server for Alibaba Cloud with a health endpoint, Docker,
+Caddy/TLS reverse proxy, environment templates, restart/logging policy, and an
+operator deployment guide.

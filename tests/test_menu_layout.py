@@ -99,7 +99,10 @@ class MenuLayoutTests(unittest.TestCase):
 
         self.assertNotIn("TIP CAPTURE", menu_titles)
         self.assertNotIn("Tip capture dataset.", intro_text)
-        self.assertEqual({key for key, _title, _subtitle in MENU_OPTIONS}, {"1", "2", "3", "4"})
+        self.assertEqual(
+            {key for key, _title, _subtitle in MENU_OPTIONS},
+            {"1", "2", "3", "4", "5"},
+        )
 
     def test_intro_spell_shapes_lists_all_player_spells(self):
         from renderer.menu import INTRO_SPELL_SHAPES
@@ -107,6 +110,21 @@ class MenuLayoutTests(unittest.TestCase):
         labels = {label for label, _text in INTRO_SPELL_SHAPES}
 
         self.assertEqual(labels, {"INC", "STU", "GLA", "PRO", "LUM", "OVR"})
+
+    def test_remote_lobby_draws_room_and_controls(self):
+        from config import HEIGHT, WIDTH
+        from game.remote_session import RemoteBattleSession
+        from renderer.menu import draw_remote_lobby
+
+        session = RemoteBattleSession(network_client=object())
+        session.room_code = "ABC123"
+        session.player_index = 0
+        session.status_message = "READY_CHECK"
+        frame = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
+
+        draw_remote_lobby(frame, session)
+
+        self.assertGreater(int(np.count_nonzero(frame)), 2000)
 
     def test_training_overlay_relabel_hint_excludes_protego(self):
         from config import HEIGHT, WIDTH

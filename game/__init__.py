@@ -9,6 +9,7 @@ __all__ = [
     "GameMode",
     "LocalBattleSession",
     "ModeRunner",
+    "RemoteBattleSession",
     "SimplePVEAI",
 ]
 
@@ -46,4 +47,8 @@ def __getattr__(name):
         from game.session import BattleSession, LocalBattleSession
 
         return {"BattleSession": BattleSession, "LocalBattleSession": LocalBattleSession}[name]
+    if name == "RemoteBattleSession":
+        from game.remote_session import RemoteBattleSession
+
+        return RemoteBattleSession
     raise AttributeError(name)

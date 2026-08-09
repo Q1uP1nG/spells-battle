@@ -15,6 +15,7 @@ MENU_OPTIONS = [
     ("2", "DUEL BATTLE", "Two players, projectiles, shields, and cooldowns."),
     ("3", "PVE BATTLE", "Play PVE Battle with the full ruleset."),
     ("4", "CV BANK", "Browse, replace, and maintain gesture bank slots."),
+    ("5", "REMOTE DUEL", "Create or join a room for two-device online battle."),
 ]
 
 INTRO_SPELL_SHAPES = [
@@ -31,6 +32,7 @@ INTRO_MODE_ROWS = [
     ("2", "Duel battle."),
     ("3", "PVE Battle."),
     ("4", "CV bank maintenance."),
+    ("5", "Remote room-code duel."),
 ]
 
 
@@ -114,9 +116,9 @@ def draw_menu(frame, cv_status, fps, tick, game=None):
     draw_centered_text(frame, "SPELLS", WIDTH // 2, 108, size=56, color=THEME["text"], face="title")
     draw_centered_text(frame, "Choose a mode", WIDTH // 2, 158, size=23, color=THEME["muted"])
 
-    start_y = 208
+    start_y = 196
     for idx, (key, title, subtitle) in enumerate(MENU_OPTIONS):
-        draw_menu_option(frame, 300, start_y + idx * 82, key, title, subtitle)
+        draw_menu_option(frame, 300, start_y + idx * 76, key, title, subtitle)
 
     draw_cv_text(frame, "ESC/X quit", (36, HEIGHT - 32), 0.56, THEME["muted"])
 
@@ -135,6 +137,31 @@ def draw_menu_option(frame, x, y, key, title, subtitle):
     subtitle_width = card_width - 108
     subtitle_scale = fit_text_scale(subtitle, cv2.FONT_HERSHEY_SIMPLEX, subtitle_width, 0.48, 1)
     draw_cv_text(frame, subtitle, (subtitle_x, y + 52), subtitle_scale, THEME["muted"])
+
+
+def draw_remote_lobby(frame, session, room_code_input="", joining=False):
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (0, 0), (WIDTH, HEIGHT), THEME["bg"], -1)
+    cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+    draw_centered_text(frame, "REMOTE DUEL", WIDTH // 2, 104, size=48, color=THEME["text"], face="title")
+    draw_centered_text(frame, session.status_message, WIDTH // 2, 156, size=23, color=THEME["gold_bright"])
+    x, y, w, h = 260, 205, 760, 360
+    cv2.rectangle(frame, (x, y), (x + w, y + h), THEME["panel"], -1)
+    cv2.rectangle(frame, (x, y), (x + w, y + h), THEME["panel_border"], 1, cv2.LINE_AA)
+    draw_centered_text(frame, f"ROOM  {session.room_code or '------'}", WIDTH // 2, y + 70, size=35, color=THEME["text"], face="title")
+    if session.player_index is None:
+        draw_centered_text(frame, "C  CREATE ROOM", WIDTH // 2, y + 135, size=25, color=THEME["muted"])
+        draw_centered_text(frame, "J  JOIN ROOM", WIDTH // 2, y + 180, size=25, color=THEME["muted"])
+    else:
+        player = session.game.players[session.player_index]
+        draw_centered_text(frame, f"YOU ARE P{session.player_index + 1}  ·  {player.display_name}", WIDTH // 2, y + 145, size=25, color=THEME["muted"])
+        draw_centered_text(frame, "A / F CHARACTER     R READY", WIDTH // 2, y + 205, size=23, color=THEME["text"])
+    if joining:
+        draw_centered_text(frame, f"TYPE ROOM CODE: {room_code_input or '_'}", WIDTH // 2, y + 255, size=26, color=THEME["gold_bright"])
+        draw_centered_text(frame, "ENTER JOIN  ·  BACKSPACE EDIT", WIDTH // 2, y + 295, size=18, color=THEME["muted"])
+    elif session.last_error:
+        draw_centered_text(frame, session.last_error[:70], WIDTH // 2, y + 270, size=19, color=(100, 120, 255))
+    draw_centered_text(frame, "M / ESC  BACK TO MENU", WIDTH // 2, y + 330, size=18, color=THEME["muted"])
 
 
 def draw_character_select(frame, game, fps, tick, mode_label=""):

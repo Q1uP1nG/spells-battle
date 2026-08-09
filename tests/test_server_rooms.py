@@ -72,6 +72,21 @@ class ServerRoomTests(unittest.TestCase):
         self.assertEqual(removed, [room.room_code])
         self.assertEqual(room.state, RoomState.CLOSED)
 
+    def test_both_players_must_request_rematch_before_new_round(self):
+        _, room, _, _ = self.make_full_room()
+        room.set_ready(0, True, 11.0)
+        room.set_ready(1, True, 11.0)
+        previous_match_id = room.match_id
+        room.state = RoomState.ROUND_OVER
+
+        room.request_rematch(0, 12.0)
+        self.assertEqual(room.state, RoomState.ROUND_OVER)
+        room.request_rematch(1, 12.1)
+
+        self.assertEqual(room.state, RoomState.RUNNING)
+        self.assertNotEqual(room.match_id, previous_match_id)
+        self.assertEqual(room.session.server_tick, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

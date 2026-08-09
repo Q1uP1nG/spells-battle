@@ -155,7 +155,7 @@ class MainModeTests(unittest.TestCase):
         from main import MODES_BY_KEY
         from game.mode import GameMode
 
-        self.assertNotIn(ord("5"), MODES_BY_KEY)
+        self.assertEqual(MODES_BY_KEY[ord("5")], GameMode.REMOTE_LOBBY)
         self.assertEqual(MODES_BY_KEY[ord("4")], GameMode.CV_TRAINING)
 
     def test_character_keys_cycle_players_with_af_and_jk(self):

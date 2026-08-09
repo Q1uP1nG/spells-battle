@@ -34,6 +34,7 @@ class Seat:
     disconnected_at: float | None = None
     last_sequence: int = 0
     cast_times: deque = field(default_factory=deque)
+    rematch_ready: bool = False
 
 
 class Room:
@@ -124,6 +125,23 @@ class Room:
         accepted = self.session.cast(player_index, intent)
         return accepted, self.session.drain_events()
 
+    def request_rematch(self, player_index, now):
+        if self.state != RoomState.ROUND_OVER:
+            raise RoomError("invalid_room_state", "rematch is only available after a round")
+        seat = self._seat(player_index)
+        seat.rematch_ready = True
+        self.last_active_at = float(now)
+        if all(value and value.rematch_ready and value.connected for value in self.seats):
+            self.match_id = uuid.uuid4().hex
+            self.session = AuthoritativeBattleSession(
+                self.match_id,
+                tuple(value.character_id for value in self.seats),
+            )
+            for value in self.seats:
+                value.rematch_ready = False
+            self.state = RoomState.RUNNING
+            self.paused = False
+
     def step(self, dt):
         if self.state != RoomState.RUNNING or self.paused or self.session is None:
             return []
@@ -149,6 +167,7 @@ class Room:
                     "character_id": seat.character_id,
                     "ready": seat.ready,
                     "connected": seat.connected,
+                    "rematch_ready": seat.rematch_ready,
                 }
                 for seat in self.seats
             ],

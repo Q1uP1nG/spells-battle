@@ -187,6 +187,13 @@ class BattleServer:
                 _, events = room.submit_cast(player_index, intent, now)
                 for event in events:
                     await self._broadcast(room.room_code, "battle_event", event_to_payload(event))
+            elif message_type == "rematch":
+                room.request_rematch(player_index, now)
+                await self._broadcast_room_state(room)
+                if room.state.value == "RUNNING":
+                    await self._broadcast(
+                        room.room_code, "battle_snapshot", snapshot_to_payload(room.snapshot())
+                    )
             else:
                 raise ProtocolError("invalid_command", f"message type is not a client command: {message_type}")
         except (ProtocolError, RoomError, KeyError, ValueError) as exc:

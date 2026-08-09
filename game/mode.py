@@ -19,6 +19,8 @@ class GameMode(Enum):
     PVE = "pve"
     CV_TRAINING = "cv_training"
     CHARACTER_SELECT = "character_select"
+    REMOTE_LOBBY = "remote_lobby"
+    REMOTE_DUEL = "remote_duel"
 
 
 class ModeRunner:
@@ -161,6 +163,8 @@ class ModeRunner:
             GameMode.PVE: "PVE BATTLE",
             GameMode.CV_TRAINING: "CV BANK",
             GameMode.CHARACTER_SELECT: "SELECT CHARACTERS",
+            GameMode.REMOTE_LOBBY: "REMOTE DUEL LOBBY",
+            GameMode.REMOTE_DUEL: "REMOTE DUEL",
         }.get(self.mode, "")
 
     @property
@@ -173,6 +177,8 @@ class ModeRunner:
             return "P1 Q/W/E/R/T or CV   V input   C lock"
         if self.mode == GameMode.CV_TRAINING:
             return "CV Bank: browse or replace representative gesture slots"
+        if self.mode == GameMode.REMOTE_DUEL:
+            return "Remote: Q/W/E/R/T or CV   V input   C lock"
         return None
 
     @property
@@ -188,6 +194,8 @@ class ModeRunner:
             return "SPACE reset   M menu   X quit"
         if self.mode == GameMode.CV_TRAINING:
             return "Enter save   Backspace rerecord   A/D spell   [/ ] slot   4-8 label   M menu"
+        if self.mode == GameMode.REMOTE_DUEL:
+            return "SPACE rematch after round   M menu   X quit"
         return None
 
     @property

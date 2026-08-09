@@ -171,9 +171,9 @@ def snapshot_from_payload(payload):
     )
     if payload["protocol_version"] != PROTOCOL_VERSION:
         raise ProtocolError("version_mismatch", "snapshot protocol version mismatch")
-    if not isinstance(payload["players"], list) or len(payload["players"]) != 2:
+    if not isinstance(payload["players"], (list, tuple)) or len(payload["players"]) != 2:
         raise ProtocolError("invalid_field", "snapshot players must contain exactly two players")
-    if not isinstance(payload["projectiles"], list):
+    if not isinstance(payload["projectiles"], (list, tuple)):
         raise ProtocolError("invalid_field", "snapshot projectiles must be an array")
     try:
         players = []

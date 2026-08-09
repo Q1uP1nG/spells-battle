@@ -46,6 +46,11 @@ class BattleGame(BattleEngine):
             if projectile.active:
                 self.spawn_trail(projectile)
 
+        self.update_presentation(dt, now)
+
+    def update_presentation(self, dt, now):
+        """Advance local-only effects without mutating authoritative battle state."""
+
         for particle in self.particles:
             particle.pos += particle.vel * dt
             particle.vel *= 0.96
