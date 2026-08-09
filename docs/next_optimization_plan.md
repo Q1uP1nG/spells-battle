@@ -80,6 +80,52 @@
 - 绘制过程预览使用裸 heuristic，停止后的正式判定使用融合 pipeline，可能出现预览与结果不一致；
 - Tick 循环内直接等待广播，慢连接可能形成网络背压。
 
+### 4.3 现有数据盘点与使用规则
+
+截至基线提交 `d547b00` 后的首次盘点，仓库已有：
+
+- `logs/cv_sessions/`：178 个 JSONL 会话文件，共 2869 条记录；其中 75 条为带 `intended_spell` 的训练记录；
+- `models/gesture_template_bank.json`：每类 30 个槽位，共 77 条含有效轨迹的槽位；分布为 Incendio 28、Circle 11、Glacius 12、Lumos 14、Overload 12；
+- `models/gesture_reviewed_samples.jsonl`：86 条人工审核记录，其中 27 条 accepted、59 条 discarded；
+- `models/gesture_templates.json`：由现有数据训练得到的 5 类、每类 3 个 prototype 模型。
+
+这批数据必须继续使用，但四种文件承担不同职责：
+
+1. 原始会话日志是不可变来源和候选样本池，不能因为当前分类器预测正确就自动当作真值；
+2. 人工审核日志是标签和接受/丢弃的审计层；同一 `sample_id` 以最后一次审核为准；
+3. 模板 Bank 是当前人工维护的可用样本视图；
+4. `gesture_templates.json` 是训练产物，不能反过来当作训练数据。
+
+盘点确认：27 条 accepted 审核样本已经全部存在于模板 Bank 中。因此训练器不得把 Bank 和 reviewed accepted 简单拼接，否则会重复加权同一批样本。Phase 0/1 必须先建立 canonical sample registry：
+
+```text
+raw log sample
+    + latest review overlay
+    + current bank membership
+    -> canonical sample_id
+    -> one trajectory, one label, one split assignment
+```
+
+去重优先级：
+
+- 首选显式 `sample_id`；
+- 旧 Bank 条目没有 `sample_id` 时，使用规范化的 `source_file + source_attempt_id`；
+- 仍缺少 attempt 时，使用来源文件、标签和归一化轨迹摘要生成稳定 legacy ID；
+- 不允许仅依靠数组位置或本次运行顺序生成 ID；
+- 报告必须列出重复、冲突标签、缺失来源和被丢弃数量。
+
+现有 77 条有效 Bank 轨迹可立即用于：
+
+- 锁定当前 heuristic/template/fused 基线；
+- 训练第一版 k-medoids prototype；
+- 对循环 DTW 做前后配对比较；
+- 建立固定小型回归夹具；
+- 发现 Circle 起点敏感、margin 过小和常见混淆样本。
+
+但它们多数缺少可靠 `user_id`、`device_id` 和 `palm_scale`，不能用来证明跨用户或跨设备泛化。现有数据先标记为 `legacy`，尽可能依据 `source_file` 做 session split；新 Schema v2 数据再用于严格的 user/device split。
+
+Circle 当前只有 11 条有效 Bank 轨迹，足够开发和验证循环位移实现，但不足以单独支撑强泛化结论。可以将真实 Circle 轨迹循环改变起点作为算法不变性测试，但这些派生轨迹必须与原轨迹处于同一数据分区，不能被当作独立测试样本扩大样本数。
+
 ## 5. 目标架构
 
 ```mermaid
@@ -550,4 +596,3 @@ python -m compileall -q main.py cv game network server tools
 
 按策划案 Phase 0 至 Phase 6 顺序工作，每一阶段先补测试再完成实现，保持提交粒度清晰。每次交付必须报告：修改文件、架构影响、数据集与模型版本、指标对比、测试命令和结果、剩余风险、是否达到晋升门槛。最终必须运行完整 unittest 与 compileall，并完成慢客户端隔离测试和两台真实设备公网验收。不能仅以单元测试通过宣称整个 Goal 完成。
 ```
-
