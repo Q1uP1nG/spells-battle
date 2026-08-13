@@ -2,9 +2,9 @@
 
 实施依据：`docs/next_optimization_plan.md`
 
-当前阶段：Phase 0 至 Phase 5 已完成，Phase 6 等待新版本公网部署与双设备人工验收
+当前阶段：本地代码优化与自动验证已完成；部署和双设备人工验收按用户要求延期
 
-最近更新：2026-08-10
+最近更新：2026-08-13
 
 ## 概念边界
 
@@ -338,16 +338,52 @@ Ran 497 tests in 13.776s
 OK
 ```
 
-## Phase 6：公网与人工验收状态
+## 本地代码收尾（2026-08-13）
+
+用户明确要求当前只完成代码修改，暂不操作 ECS 部署。对 Phase 0–5 做完成度复审后，
+补充提交：
+
+- `fd1cada fix: retain server sender failure metrics`
+- `cd63c9a fix: make sender backpressure terminal`
+
+修复内容：
+
+- 已断开连接的快照合并数、发送耗时、超时、失败和背压断开数现在汇总到服务器生命周期
+  累计值，不会因连接从活动表移除而从 `/health.metrics` 消失；
+- 可靠队列溢出会立即把 sender 标为 closing，后续投递统一拒绝，避免关闭任务执行前继续
+  接受消息并重复累计背压断开；
+- 发送超时不重试同一可靠帧，因为超时发生时无法证明对端未收到消息；服务端明确断开，
+  由现有重连与权威快照恢复状态，避免重复事件；
+- 新增真实服务器停机测试，验证两个活动 WebSocket 的 sender 和 close task 均被清理；
+- 新增发送异常、历史指标保留和终止性背压测试。
+
+最终本地回归：
+
+```text
+python -m compileall -q main.py cv game network server tools
+python -m unittest discover -s tests -q
+Ran 500 tests in 10.205s
+OK
+```
+
+固定 77 条 canonical 轨迹重新评价相对 Phase 4 的所有确定性指标均为零变化：current
+heuristic 45/77、normalized Shadow 47/77、data template 75/77、fused 73/77、
+session-grouped representative template 41/77。严格 grouped cyclic 仍因 fold 3 的
+Stupefy 训练样本不足而 `unavailable`；循环候选继续保持 Shadow，配置仍为
+`CV_CYCLIC_STUPEFY_PRIMARY=False`。本机本轮循环候选 p95 为 25.21ms，仍高于
+`<10ms` 晋升预算。
+
+## 延期的部署与人工验收（不属于当前代码修改）
 
 2026-08-10 对 `ws://101.132.63.248:8765` 运行完整公网探针：健康检查、两个真实
 WebSocket、建房/加入、ready、权威施法、完整一局、胜者和最终快照一致性全部通过，
 耗时 10.069 秒。
 
-但公网 `/health` 仍只返回 `status/rooms/connections`，没有本阶段新增的 `metrics`，
-可判定 ECS 当前运行的是旧版本，而不是提交 `e3160be`。因此 Goal 尚不能宣称完成：
+2026-08-13 复查公网 `/health` 仍只返回 `status/rooms/connections`，没有本地新版本的
+`metrics`，可判定 ECS 当前仍运行旧代码。用户已明确暂不部署，因此以下事项延期，
+不应阻塞“本地代码已完成”的结论，也不得被描述为已经通过：
 
-1. 将 `e3160be` 或后续交付提交部署到 ECS 的 systemd Python 服务；
+1. 将 `cd63c9a` 或后续交付提交部署到 ECS 的 systemd Python 服务；
 2. 再跑完整公网探针，并确认 `/health.metrics` 存在；
 3. 两台不同网络 Windows 设备人工完成 keyboard、finger/bright-wand CV、断线重连和
    至少三局 rematch；

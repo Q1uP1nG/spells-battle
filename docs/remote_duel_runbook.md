@@ -67,6 +67,9 @@ ready、心跳、连续权威施法、胜负和双方最终快照一致性检查
 
 ## 公网验收清单
 
+当前仓库代码已经通过本地自动化验收；公网更新和两台真实设备测试按用户要求延期。
+以下清单保留供恢复部署时使用，未执行项不能标记为通过。
+
 无域名公网部署步骤见 `docs/remote_duel_direct_ip_route.md` 和 `deploy/README.md`。发布前必须在两台不同网络的 Windows 设备上确认：
 
 - `http://ECS_PUBLIC_IP:8765/health` 返回 ok；

@@ -144,6 +144,12 @@ Protego is open palm, not a drawn U. Stupefy now uses a circle gesture; zigzag g
 - `ShadowTemplateClassifier` is still a separate fixed-template comparison path and does not control gameplay.
 - The active CV input modes are only `finger` and bright-marker `wand`.
 - Settings from older builds that contain `plain_wand` fall back to `finger`.
+- Remote Duel uses an authoritative server. Each connection has a bounded reliable FIFO,
+  one latest-snapshot slot, an independent sender task, send timeout/backpressure cleanup,
+  and lifetime health metrics. The battle Tick never waits for a real WebSocket send.
+- Normalized gesture features and cyclic Stupefy DTW are diagnostic Shadow paths. The cyclic
+  candidate is not promoted because grouped data is insufficient and its measured latency is
+  above the real-time gate; `CV_CYCLIC_STUPEFY_PRIMARY` remains disabled.
 
 ---
 
@@ -176,11 +182,11 @@ The game is functional, but presentation can still improve:
 
 ## Next Priority Order
 
-1. Improve frontend polish and reduce on-screen clutter.
-2. Stabilize bright-marker wand tracking.
-3. Use CV Training to collect finger and bright-wand gesture samples.
-4. Replay logs to compare heuristic, fused primary, and shadow predictions.
-5. Use those results to tune template thresholds or decide whether any spell should move closer to template-led behavior.
+1. Collect Stupefy samples across more independent sessions before reconsidering cyclic DTW.
+2. Stabilize bright-marker wand tracking and collect both finger and wand Schema v2 samples.
+3. Run user/device-grouped evaluation only after genuine anonymous user/device groups exist.
+4. Improve frontend polish and reduce on-screen clutter.
+5. Deploy and run two-device public acceptance only when the deployment work is resumed.
 
 Do not spend more time on unmarked pen/chopstick detection unless the project goal changes.
 
