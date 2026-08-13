@@ -83,9 +83,12 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
         await connection.send("ping", {})
         with self.assertRaises(SlowClientError):
             await connection.send("ping", {})
+        with self.assertRaises(SlowClientError):
+            await connection.send("ping", {})
         await asyncio.sleep(0)
 
         self.assertEqual(websocket.closed, (1013, "client too slow"))
+        self.assertEqual(connection.send_stats.backpressure_disconnect_count, 1)
 
     async def test_writer_can_be_cancelled_without_leaking_task(self):
         connection = ClientConnection(FakeWebSocket())

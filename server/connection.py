@@ -137,6 +137,8 @@ class ClientConnection:
         return True
 
     def _schedule_close(self, code, reason):
+        self._closing = True
+        self._wakeup.set()
         if self._close_task is None or self._close_task.done():
             self._close_task = asyncio.create_task(
                 self.websocket.close(code=code, reason=reason),
