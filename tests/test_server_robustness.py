@@ -34,6 +34,11 @@ class CapturingWebSocket:
         self.closed = (code, reason)
 
 
+class FailingWebSocket(CapturingWebSocket):
+    async def send(self, raw):
+        raise ConnectionError("simulated websocket failure")
+
+
 class TickRoom:
     room_code = "TICK01"
     paused = False
@@ -155,6 +160,43 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(websocket.closed, (1013, "client send timeout"))
         self.assertEqual(connection.send_stats.send_timeout_count, 1)
+        self.assertEqual(connection.send_stats.messages_sent, 0)
+        self.assertEqual(connection.reliable_queue_depth, 0)
+
+    async def test_completed_connection_failures_remain_in_server_metrics(self):
+        server = BattleServer()
+        connection = ClientConnection(CapturingWebSocket())
+        connection.send_stats.send_timeout_count = 2
+        connection.send_stats.send_failure_count = 1
+        connection.send_stats.backpressure_disconnect_count = 1
+        connection.send_stats.coalesced_snapshot_count = 3
+        connection.send_stats.send_durations_ms.extend([1.0, 3.0])
+
+        server._record_completed_connection(connection)
+
+        metrics = server.metrics_snapshot
+        self.assertEqual(metrics["send_timeout_count"], 2)
+        self.assertEqual(metrics["send_failure_count"], 1)
+        self.assertEqual(metrics["backpressure_disconnect_count"], 1)
+        self.assertEqual(metrics["coalesced_snapshot_count"], 3)
+        self.assertEqual(metrics["send_duration_p50_ms"], 2.0)
+        self.assertAlmostEqual(metrics["send_duration_p95_ms"], 2.9)
+
+    async def test_websocket_send_failure_closes_sender_and_is_counted(self):
+        websocket = FailingWebSocket()
+        connection = ClientConnection(websocket)
+        connection.start_writer()
+        connection.enqueue("battle_event", {"sequence": 1})
+
+        for _ in range(20):
+            if websocket.closed is not None:
+                break
+            await asyncio.sleep(0)
+        await connection.stop_writer()
+
+        self.assertEqual(websocket.closed, (1011, "client send failed"))
+        self.assertEqual(connection.send_stats.send_failure_count, 1)
+        self.assertEqual(connection.send_stats.messages_sent, 0)
 
     async def test_blocked_sender_does_not_reduce_authoritative_tick_frequency(self):
         config = ServerConfig(port=0, tick_rate=100, snapshot_rate=100)

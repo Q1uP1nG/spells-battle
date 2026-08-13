@@ -193,6 +193,17 @@ class ServerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(snapshot["payload"]["match_id"], room.match_id)
         self.assertFalse(room.paused)
 
+    async def test_server_stop_cleans_all_live_connection_senders(self):
+        connections = tuple(self.server._connections.values())
+        self.assertEqual(len(connections), 2)
+        self.assertTrue(all(connection._writer_task is not None for connection in connections))
+
+        await self.server.stop()
+
+        self.assertEqual(self.server._connections, {})
+        self.assertTrue(all(connection._writer_task is None for connection in connections))
+        self.assertTrue(all(connection._close_task is None for connection in connections))
+
 
 if __name__ == "__main__":
     unittest.main()

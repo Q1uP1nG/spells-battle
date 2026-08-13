@@ -57,6 +57,13 @@ class BattleServer:
         self._closing = False
         self._tick_durations_ms = deque(maxlen=1024)
         self._tick_lags_ms = deque(maxlen=1024)
+        self._completed_connection_stats = {
+            "coalesced_snapshot_count": 0,
+            "send_timeout_count": 0,
+            "send_failure_count": 0,
+            "backpressure_disconnect_count": 0,
+        }
+        self._completed_send_durations_ms = deque(maxlen=4096)
 
     @property
     def port(self):
@@ -68,9 +75,12 @@ class BattleServer:
     def metrics_snapshot(self):
         connections = tuple(self._connections.values())
         send_durations = [
+            *self._completed_send_durations_ms,
+            *[
             duration
             for connection in connections
             for duration in connection.send_stats.send_durations_ms
+            ],
         ]
         depths = [connection.reliable_queue_depth for connection in connections]
         return {
@@ -81,18 +91,22 @@ class BattleServer:
             "reliable_queue_depth_total": sum(depths),
             "reliable_queue_depth_max": max(depths, default=0),
             "snapshot_pending_count": sum(connection.snapshot_pending for connection in connections),
-            "coalesced_snapshot_count": sum(
+            "coalesced_snapshot_count": self._completed_connection_stats[
+                "coalesced_snapshot_count"
+            ] + sum(
                 connection.send_stats.coalesced_snapshot_count for connection in connections
             ),
             "send_duration_p50_ms": _percentile(send_durations, 0.50),
             "send_duration_p95_ms": _percentile(send_durations, 0.95),
-            "send_timeout_count": sum(
+            "send_timeout_count": self._completed_connection_stats["send_timeout_count"] + sum(
                 connection.send_stats.send_timeout_count for connection in connections
             ),
-            "send_failure_count": sum(
+            "send_failure_count": self._completed_connection_stats["send_failure_count"] + sum(
                 connection.send_stats.send_failure_count for connection in connections
             ),
-            "backpressure_disconnect_count": sum(
+            "backpressure_disconnect_count": self._completed_connection_stats[
+                "backpressure_disconnect_count"
+            ] + sum(
                 connection.send_stats.backpressure_disconnect_count for connection in connections
             ),
         }
@@ -142,6 +156,7 @@ class BattleServer:
         finally:
             await connection.stop_writer()
             self._connections.pop(websocket, None)
+            self._record_completed_connection(connection)
             if connection.room_code is not None and connection.player_index is not None:
                 try:
                     room = self.rooms.get(connection.room_code)
@@ -406,6 +421,15 @@ class BattleServer:
     def _bind(self, connection, room_code, player_index):
         connection.room_code = room_code
         connection.player_index = player_index
+
+    def _record_completed_connection(self, connection):
+        for name in self._completed_connection_stats:
+            self._completed_connection_stats[name] += int(
+                getattr(connection.send_stats, name, 0)
+            )
+        self._completed_send_durations_ms.extend(
+            connection.send_stats.send_durations_ms
+        )
 
     def _ensure_unbound(self, connection):
         if connection.room_code is not None:

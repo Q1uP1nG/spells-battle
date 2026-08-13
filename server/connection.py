@@ -158,6 +158,8 @@ class ClientConnection:
                 "disconnecting client after send timeout",
                 extra={"context": self.send_metrics},
             )
+            # Retrying is unsafe: the peer may have received the frame before the
+            # timeout fired. Close and recover from an authoritative snapshot instead.
             self._schedule_close(1013, "client send timeout")
             return False
         except (asyncio.CancelledError, GeneratorExit):
@@ -171,7 +173,9 @@ class ClientConnection:
             self._schedule_close(1011, "client send failed")
             return False
         finally:
-            self.send_stats.send_durations_ms.append((perf_counter() - started) * 1000.0)
+            self.send_stats.send_durations_ms.append(
+                (perf_counter() - started) * 1000.0
+            )
         self.send_stats.messages_sent += 1
         return True
 
