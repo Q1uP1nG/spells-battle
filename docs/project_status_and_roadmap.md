@@ -138,6 +138,9 @@ Protego is open palm, not a drawn U. Stupefy now uses a circle gesture; zigzag g
 - Menu character selection persists through `game/settings.py`.
 - Transparent character art from `pictures_transparent/` is used by the character-select screen and battle player renderer. Missing art falls back to the old code-drawn player.
 - CV state has explicit cast states and clearer debug text than the original monolithic file.
+- Gesture features are uniformly downsampled across the whole draw (first and last
+  points preserved) instead of keeping only the trailing 80 points, so slow circles
+  and long zigzags are no longer misread; all thresholds still apply to raw pixels.
 - CV Training logs `intended_spell`, primary fused/heuristic prediction, and shadow template/DTW prediction.
 - CV Training persists accepted sample counts in `logs/cv_training/progress.json`, so a partially recorded set can be resumed after returning to the menu.
 - When `models/gesture_templates.json` is available, `DataTemplateClassifier` is used inside the primary `FusedGestureClassifier`; it can boost confidence when it agrees with the heuristic and can rescue a no-match heuristic result at high confidence.

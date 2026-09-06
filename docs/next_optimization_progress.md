@@ -388,3 +388,81 @@ WebSocket、建房/加入、ready、权威施法、完整一局、胜者和最�
 3. 两台不同网络 Windows 设备人工完成 keyboard、finger/bright-wand CV、断线重连和
    至少三局 rematch；
 4. 人工验收完成前，不以自动探针替代真实设备结论。
+
+## 代码审查修复（2026-09-06）
+
+对全部核心模块（CV 管线、语料归属链、战斗引擎、服务器/网络、粘合层）做了一轮
+独立代码审查，并修复以下确认的问题。本节只记录已落地并有测试证据的修改。
+
+### 修复内容
+
+1. **特征提取改为全轨迹均匀降采样（原为尾截断）**。`extract_gesture_features`
+   原先只取最后 80 个点：慢速画圆超过约 2.7 秒（30fps）时起点被截掉，剩余弧段
+   的闭合比远超 0.24 门槛，Stupefy 圆判定与循环 DTW 闭合门会系统性误拒；
+   Overload 的 turn_count 同理受损。现在 `select_feature_points()` 在整条轨迹上
+   均匀采样且始终保留首尾点，`MAX_FEATURE_POINTS` 语义不变。
+2. **语料审核决策去随机化**。`_lookup_review` 原先按 set 迭代顺序取 `[-1]`：当
+   一个候选通过多个强别名（sample_id 与 source key）匹配到不同审核记录时，应用
+   哪条决定随 PYTHONHASHSEED 变化，corpus_version 与评价结果可能跨进程漂移。
+   现在 `_review_aliases` 记录文件顺序，强别名冲突时确定性地应用文件顺序中最新
+   的审核记录；`trajectory:` 弱别名冲突仍置 `None` 拒绝应用。
+3. **远程 pending 施法不再显示 BLOCKED**。`RemoteBattleSession.submit_cast` 返回
+   `accepted=None`（pending），`cast_cv_spell` 原先按失败处理（清轨迹、WAIT/
+   BLOCKED 0.6 秒）。现在 pending 是独立分支：轨迹仍清空防重复施法，状态改为
+   CASTING/"SENT (awaiting server)"，由后续快照或 battle_event 确认。日志事件
+   新增 `debug_state="PENDING"`，`cast_success` 仍为 False（服务器未确认）。
+4. **死亡玩家不再被未完成的 Lumos 复活**。`pending_heal` 结算增加 `alive()` 门；
+   死亡时 pending_heal 清零且不结算、不发 heal_completed。胜负判定此前已正确
+   （同 tick 宣布 winner），此修复消除回合结束后的视觉复活。
+5. **循环覆盖分类器补 context 转发**。`StupefyCyclicOverlayClassifier` 原先丢弃
+   classification context 且不声明 `supports_context`。现在通过统一的
+   `_invoke_classifier` 转发 context（`DataTemplateClassifier` 无 context 支持时
+   仍按双参调用），并声明 `supports_context = True`。该分类器仍在
+   `CV_CYCLIC_STUPEFY_PRIMARY=False` 下保持 Shadow，行为未启用。
+6. **rematch 重置施法序列去重范围**。`Room.request_rematch` 现在把每个 seat 的
+   `last_sequence` 归零并清空 `cast_times`。当前客户端序列号全程递增因此不受
+   影响；此修改使服务端同时兼容“按对局重置计数器”的未来客户端，序列去重与
+   match_id 校验的语义对齐为“每对局一份”。
+7. **服务器 handler 意外异常不再静默断连**。`_handle_message` 在既有四类异常
+   之外增加兜底 `except Exception`：记录堆栈、回复
+   `error(code="internal_error")` 并保持连接存活；此前 TypeError 等会直接杀死
+   该连接且无错误响应。
+8. **Tick 追赶设上限**。`_tick_loop` 在单 tick 超时超过一个完整 interval 时将
+   deadline 重同步到当前时间；此前持续超时会变成无 sleep 的追赶热循环。
+9. **封装与死代码清理**。`AudioManager` 新增 `bgm_playing` 属性，`main.py` 不再
+   触碰 `audio._bgm_channel/_initialized`（并移除一句误植的
+   `_initialized = True`）；删除只被 legacy 引用的 `CV_TRACK_TIMEOUT_FAST/SLOW`
+   死配置；删除生产零引用的 `HybridTemplateGestureClassifier`（0.2 权重加权双轨
+   路径，`load_runtime_templates` 与 `RuntimeTemplateClassifier` 保留）；
+   `requirements.txt` 补声明测试所需的 `PyYAML>=6.0`。
+
+### 验证证据
+
+```text
+python -m compileall -q main.py cv game network server tools
+python -m unittest discover -s tests -q
+Ran 508 tests in 9.0s
+OK
+```
+
+新增测试：慢速长圆仍判 Stupefy、长 zigzag 降采样保 turn、首尾点保留、强别名
+审核冲突按文件顺序确定性应用、pending 施法状态、死亡玩家治疗不复活、rematch
+序列重置、循环 overlay context 转发、handler 崩溃响应。删除 2 项只覆盖已移除
+死类的测试。
+
+固定 77 条 canonical 轨迹重跑评价（`audit_fixes_downsample`）与 Phase 0 基线
+逐项对比：current heuristic 45/77、real template 70/77、data template 75/77、
+fused 73/77 全部零变化；语料审计（104 候选 → 77 canonical、合并 27、标签冲突
+0）不变。这是预期结果——现有语料全部 ≤48 点，从未触发截断；降采样修复只影响
+今后 >80 点的实时手势。macro 平均最后一位存在跨 numpy 版本的浮点求和噪声，
+分类结果本身一致。
+
+### 明确不修改的项
+
+- 主识别算法与阈值不晋升（normalized shadow、循环 DTW、v2 模板包按既定门槛
+  继续保持 Shadow）；本批修复不改任何正式施法阈值。
+- 生产模板包 `models/gesture_templates.json` 不重建；重建应伴随新语料与正式
+  评价流程。
+- `network/client.py` 的 30ms 收发轮询保留：实测开销有界（出站延迟 ≤30ms），
+  重写线程模型属于需要双设备人工验收的独立改动。
+- `cv/controller.py` 的大拆分不在本批进行；需要独立重构窗口与回归。
