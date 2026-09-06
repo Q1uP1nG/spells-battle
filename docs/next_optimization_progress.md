@@ -383,7 +383,7 @@ WebSocket、建房/加入、ready、权威施法、完整一局、胜者和最�
 `metrics`，可判定 ECS 当前仍运行旧代码。用户已明确暂不部署，因此以下事项延期，
 不应阻塞“本地代码已完成”的结论，也不得被描述为已经通过：
 
-1. 将 `cd63c9a` 或后续交付提交部署到 ECS 的 systemd Python 服务；
+1. 将 `51fdf5c` 交付提交（部署包 `spells-server-deploy-51fdf5c.tar.gz`，SHA256 `5B7926C8...5EB4`，见 continuation goal 文档）部署到 ECS 的 systemd Python 服务；
 2. 再跑完整公网探针，并确认 `/health.metrics` 存在；
 3. 两台不同网络 Windows 设备人工完成 keyboard、finger/bright-wand CV、断线重连和
    至少三局 rematch；

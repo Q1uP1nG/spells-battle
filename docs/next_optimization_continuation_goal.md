@@ -57,13 +57,20 @@ docs/next_optimization_plan.md 所定义的 Spells Battle 优化 Goal。
 6. 指导并记录两台不同网络 Windows 设备的人工验收；
 7. 完成最终回归、文档和交付审计。
 
-已生成的候选部署包为：
+已生成的候选部署包为（2026-09-06 从提交 51fdf5c 的已验证工作树重新生成；
+旧的 e3160be / 74ab478 / 无提交号包已核实过时并删除）：
 
-`C:\Users\15261\Desktop\spells-server-deploy-e3160be.tar.gz`
+`C:\Users\15261\Desktop\spells-server-deploy-51fdf5c.tar.gz`
 
 已记录 SHA256：
 
-`5D97E21E35FAE9D38618347F8B67C3A78B4B7BD6B15D3387732CA675900DDAC8`
+`5B7926C86595FA7E2AA1EB7AF0C980139E46D93263C650EC4A952D770A735EB4`
+
+包内 46 个文件与仓库 51fdf5c 工作树逐字节一致，包含 Dockerfile、compose.yaml、
+.env.example、requirements-server.txt、config.py、game/、models/、network/、
+server/（无 __pycache__）。已验证解包后 `import server.app` 无 cv2/pygame 依赖、
+compileall 通过，且包含本轮代码审查修复（handler internal_error 兜底、rematch
+序列去重重置、日志异常堆栈）。
 
 开始部署前必须重新计算哈希、检查包内至少包含 `server/app.py`、
 `server/connection.py`、`server/config.py`、`network/`、`game/` 和
