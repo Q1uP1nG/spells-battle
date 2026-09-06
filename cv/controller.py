@@ -1066,9 +1066,16 @@ class CVGestureController:
             source="cv",
         )
         did_cast = submission.accepted is True
+        pending_remote = submission.accepted is None
 
         if result is not None:
             side = game.players[player_index].side
+            if pending_remote:
+                debug_state = "PENDING"
+            elif did_cast:
+                debug_state = "CAST"
+            else:
+                debug_state = "BLOCKED"
             self._log_gesture_event(self._gesture_log_event(
                 now=now,
                 side=side,
@@ -1076,9 +1083,9 @@ class CVGestureController:
                 result=result,
                 cast_attempted=True,
                 cast_success=did_cast,
-                debug_state="CAST" if did_cast else "BLOCKED",
+                debug_state=debug_state,
                 block_reason=(submission.reason or game.players[player_index].last_message)
-                if not did_cast else "",
+                if not did_cast and not pending_remote else "",
                 track=track,
                 pipeline_evaluation=pipeline_evaluation,
             ))
@@ -1092,6 +1099,19 @@ class CVGestureController:
             track.last_cast_until = now + 1.0
             _set_track_state(track, CastState.CASTING, "CAST",
                              f"{label}{' emergency' if emergency else ''}")
+        elif pending_remote:
+            # The remote session forwarded the request but the authoritative
+            # server has not confirmed it yet.  That is not a rejection: clear
+            # the trail, surface the pending state, and let the next snapshot
+            # or battle event confirm the cast.
+            self.clear_gesture_buffer(track)
+            track.last_prediction = label
+            track.last_confidence = confidence
+            track.last_cast_label = label
+            track.last_cast_confidence = confidence
+            track.last_cast_until = now + 1.0
+            _set_track_state(track, CastState.CASTING, "SENT",
+                             f"{label} awaiting server")
         else:
             self.clear_gesture_buffer(track)
             track.last_prediction = label

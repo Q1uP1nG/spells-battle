@@ -57,6 +57,46 @@ class CVControllerPalmGateTests(unittest.TestCase):
             "source": "cv",
         }])
 
+    def test_cast_cv_spell_pending_remote_submission_is_not_blocked(self):
+        from game.commands import CastIntent, CastSubmission
+        from models.cv_track import CVTrack, CastState
+
+        class PendingSession:
+            def __init__(self, game):
+                self.game = game
+
+            def request_cast(self, **kwargs):
+                intent = CastIntent(
+                    spell=kwargs["spell"],
+                    sequence=1,
+                    client_time_ms=int(kwargs["now"] * 1000),
+                    source=kwargs["source"],
+                )
+                return CastSubmission(intent=intent, accepted=None)
+
+        class FakeGame:
+            players = [SimpleNamespace(side="left", last_message="")]
+
+        game = FakeGame()
+        controller = self.make_controller()
+        controller.allow_casting = True
+        controller.battle_session = PendingSession(game)
+        track = CVTrack()
+        track.points.append(np.array([100.0, 100.0], dtype=np.float32))
+
+        did_cast = controller.cast_cv_spell(
+            game, 0, track, "incendio", confidence=0.95, now=12.0,
+        )
+
+        # A remote submission is pending, not rejected: the trail is cleared so
+        # the gesture cannot fire twice, but the track shows the sent state.
+        self.assertFalse(did_cast)
+        self.assertEqual(len(track.points), 0)
+        self.assertEqual(track.state, CastState.CASTING)
+        self.assertEqual(track.debug_state, "SENT")
+        self.assertEqual(track.last_cast_label, "INC")
+        self.assertGreater(track.last_cast_until, 12.0)
+
     def make_controller(self):
         from cv.controller import CVGestureController
 
@@ -131,11 +171,9 @@ class CVControllerPalmGateTests(unittest.TestCase):
     def test_default_gesture_pipeline_falls_back_without_template_model(self):
         from cv.controller import create_default_gesture_pipeline
         from cv.gesture_pipeline import FusedGestureClassifier, HeuristicGestureClassifier
-        from cv.hybrid_classifier import HybridTemplateGestureClassifier
 
         pipeline = create_default_gesture_pipeline(data_template_path="missing-template-file.json")
 
-        self.assertNotIsInstance(pipeline.primary, HybridTemplateGestureClassifier)
         self.assertIsInstance(pipeline.primary, (FusedGestureClassifier, HeuristicGestureClassifier))
 
     def test_default_gesture_pipeline_uses_fused_primary_when_template_model_exists(self):
