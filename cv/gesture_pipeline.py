@@ -265,14 +265,19 @@ class FusedGestureClassifier:
 class StupefyCyclicOverlayClassifier:
     """Per-spell promotion switch: overlay only a closed-loop Stupefy decision."""
 
+    supports_context = True
+
     def __init__(self, baseline, cyclic_candidate):
         self.baseline = baseline
         self.cyclic_candidate = cyclic_candidate
         self.loaded = bool(getattr(baseline, "loaded", False))
 
-    def classify(self, points, side) -> ClassificationResult:
-        baseline = self.baseline.classify(points, side)
-        cyclic = self.cyclic_candidate.classify(points, side)
+    def classify(self, points, side, context=None) -> ClassificationResult:
+        # The cyclic candidate is a DataTemplateClassifier without context
+        # support, so route both classifiers through the shared invocation
+        # helper instead of assuming every classifier accepts a context.
+        baseline = _invoke_classifier(self.baseline, points, side, context)
+        cyclic = _invoke_classifier(self.cyclic_candidate, points, side, context)
         if cyclic.cyclic_used:
             return cyclic
         return baseline

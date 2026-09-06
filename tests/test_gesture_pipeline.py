@@ -75,6 +75,40 @@ class GesturePipelineTests(unittest.TestCase):
         result = pipeline.classify([[100, 200]], "left")
         self.assertEqual(result.spell, "glacius")
 
+    def test_cyclic_overlay_forwards_context_to_both_classifiers(self):
+        from cv.gesture_pipeline import (
+            ClassificationResult,
+            GestureClassificationContext,
+            StupefyCyclicOverlayClassifier,
+        )
+
+        seen = {}
+
+        class ContextAwareFake:
+            supports_context = True
+
+            def classify(self, points, side, context=None):
+                seen.setdefault("baseline", context)
+                return ClassificationResult(
+                    spell="incendio", confidence=0.8,
+                    method="fake", reason="fake",
+                )
+
+        class CyclicFake:
+            def classify(self, points, side):
+                seen.setdefault("cyclic", "no-context")
+                return ClassificationResult(
+                    spell=None, confidence=0.0,
+                    method="cyclic_template_shadow", reason="gate rejected",
+                )
+
+        overlay = StupefyCyclicOverlayClassifier(ContextAwareFake(), CyclicFake())
+        context = GestureClassificationContext(palm_scale=95.0, purpose="final")
+        result = overlay.classify([[100.0, 200.0]], "left", context)
+
+        self.assertIs(seen["baseline"], context)
+        self.assertEqual(result.spell, "incendio")
+
     def test_pipeline_returns_primary_and_normalized_shadow_together(self):
         from cv.gesture_pipeline import GesturePipeline, GESTURE_PIPELINE_VERSION
 
