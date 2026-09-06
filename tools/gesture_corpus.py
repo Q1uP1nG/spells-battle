@@ -352,6 +352,10 @@ def _identity_aliases(candidate) -> set[str]:
 
 
 def _lookup_review(review_aliases, aliases):
+    # review_aliases maps every alias to (file_order, review) or None.  When a
+    # candidate matches several strong aliases, set iteration order must not
+    # decide which review wins, so the latest record in file order is applied
+    # deterministically.  None means the alias saw conflicting reviews.
     strong = [
         review_aliases[alias]
         for alias in aliases
@@ -360,7 +364,7 @@ def _lookup_review(review_aliases, aliases):
         and review_aliases[alias] is not None
     ]
     if strong:
-        return strong[-1]
+        return max(strong, key=lambda item: item[0])[1]
     trajectory = [
         review_aliases[alias]
         for alias in aliases
@@ -368,20 +372,22 @@ def _lookup_review(review_aliases, aliases):
         and alias in review_aliases
         and review_aliases[alias] is not None
     ]
-    return trajectory[-1] if trajectory else None
+    if not trajectory:
+        return None
+    return max(trajectory, key=lambda item: item[0])[1]
 
 
 def _review_aliases(reviews: Iterable[dict]):
     aliases = {}
-    for review in reviews:
+    for order, review in enumerate(reviews):
         for alias in _identity_aliases(review):
             existing = aliases.get(alias)
-            if existing is not None and existing.get("sample_id") != review.get("sample_id"):
+            if existing is not None and existing[1].get("sample_id") != review.get("sample_id"):
                 # An identical trajectory can be recorded more than once. It
                 # is unsafe to apply either review through this weak alias.
                 aliases[alias] = None
             elif alias not in aliases:
-                aliases[alias] = review
+                aliases[alias] = (order, review)
     return aliases
 
 

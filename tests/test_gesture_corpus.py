@@ -51,6 +51,64 @@ class GestureCorpusTests(unittest.TestCase):
         self.assertTrue(corpus.audit["corpus_version"].startswith("sha256:"))
         self.assertEqual(corpus.audit["corpus_version"], repeated.audit["corpus_version"])
 
+    def test_conflicting_strong_reviews_apply_latest_in_file_order(self):
+        from tools.gesture_corpus import load_canonical_corpus
+
+        # One candidate can match two different review records through two
+        # different strong aliases (its sample_id and its source key).  The
+        # applied decision must be the latest review in file order and must
+        # not depend on set iteration order inside the process.
+        points = [[0.0, 0.0], [80.0, 0.0], [160.0, 0.0]]
+        accept_older = {
+            "sample_id": "log-a.jsonl:1",
+            "review_status": "accepted",
+            "label": "incendio",
+            "points": points,
+        }
+        discard_newer = {
+            "source_file": "log-b.jsonl",
+            "source_attempt_id": 2,
+            "review_status": "discarded",
+            "points": points,
+        }
+        bank_entry = {
+            "sample_id": "log-a.jsonl:1",
+            "label": "incendio",
+            "points": points,
+            "source_file": "log-b.jsonl",
+            "source_attempt_id": 2,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bank_path = root / "bank.json"
+            bank_path.write_text(json.dumps({"slots": {"incendio": [bank_entry]}}), encoding="utf-8")
+
+            discard_last = root / "discard_last.jsonl"
+            self._write_jsonl(discard_last, [accept_older, discard_newer])
+            discarded = load_canonical_corpus(bank_path=bank_path, reviewed_path=discard_last)
+            discarded_again = load_canonical_corpus(bank_path=bank_path, reviewed_path=discard_last)
+
+            accept_last = root / "accept_last.jsonl"
+            self._write_jsonl(accept_last, [discard_newer, accept_older])
+            accepted = load_canonical_corpus(bank_path=bank_path, reviewed_path=accept_last)
+            accepted_again = load_canonical_corpus(bank_path=bank_path, reviewed_path=accept_last)
+
+        # The bank candidate is discarded by the newest review, but the accepted
+        # review itself still contributes one canonical sample.
+        self.assertEqual(discarded.audit, discarded_again.audit)
+        self.assertEqual(len(discarded.samples), 1)
+        self.assertEqual(discarded.samples[0].label, "incendio")
+        self.assertEqual(discarded.audit["discarded_by_review"], 1)
+        self.assertEqual(discarded.audit["duplicates_merged"], 0)
+
+        # The same candidate is kept when the accept review is the newest one,
+        # and the accepted-review view of the same trajectory merges into it.
+        self.assertEqual(accepted.audit, accepted_again.audit)
+        self.assertEqual(len(accepted.samples), 1)
+        self.assertEqual(accepted.samples[0].label, "incendio")
+        self.assertEqual(accepted.audit["discarded_by_review"], 0)
+        self.assertEqual(accepted.audit["duplicates_merged"], 1)
+
     def test_latest_discard_review_excludes_bank_sample(self):
         from tools.gesture_corpus import load_canonical_corpus
 
