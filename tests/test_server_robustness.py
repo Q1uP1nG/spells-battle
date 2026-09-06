@@ -225,6 +225,31 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(connection.send_stats.coalesced_snapshot_count, 0)
         self.assertEqual(len(server._tick_durations_ms), room.steps)
 
+    async def test_unexpected_handler_error_responds_without_dropping_connection(self):
+        server = BattleServer()
+        websocket = CapturingWebSocket()
+
+        class ExplodingConnection(ClientConnection):
+            def allow_request(self, now, limit):
+                raise TypeError("simulated handler bug")
+
+        connection = ExplodingConnection(websocket)
+        connection.start_writer()
+        raw = json.dumps({"protocol_version": PROTOCOL_VERSION, "type": "ping", "payload": {}})
+
+        await server._handle_message(connection, raw)
+
+        for _ in range(20):
+            if websocket.sent:
+                break
+            await asyncio.sleep(0)
+        await connection.stop_writer()
+
+        self.assertEqual(websocket.closed, None)
+        self.assertEqual(len(websocket.sent), 1)
+        self.assertEqual(websocket.sent[0]["type"], "error")
+        self.assertEqual(websocket.sent[0]["payload"]["code"], "internal_error")
+
     async def test_general_message_rate_is_bounded_per_connection(self):
         connection = ClientConnection(FakeWebSocket())
 

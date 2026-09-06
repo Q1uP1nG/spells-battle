@@ -343,6 +343,26 @@ class BattleServer:
                 },
             )
             await connection.send("error", {"code": code, "message": str(exc)}, request_id)
+        except Exception:
+            # An unexpected handler bug must not silently drop the connection
+            # with no error response; report it and keep the socket alive.
+            LOGGER.exception(
+                "request handler failed",
+                extra={
+                    "context": {
+                        "room_code": connection.room_code,
+                        "player_index": connection.player_index,
+                    }
+                },
+            )
+            try:
+                await connection.send(
+                    "error",
+                    {"code": "internal_error", "message": "request handler failed"},
+                    request_id,
+                )
+            except Exception:
+                pass
 
     async def _tick_loop(self):
         interval = 1.0 / self.config.tick_rate
@@ -351,6 +371,12 @@ class BattleServer:
         deadline = loop.time()
         while not self._closing:
             deadline += interval
+            # A single slow tick may overrun its deadline; catching up over one
+            # interval keeps the schedule honest.  If the overrun is larger, the
+            # backlog is not worth chasing and unbounded catch-up would spin the
+            # loop without sleeping, so resynchronize instead.
+            if loop.time() - deadline > interval:
+                deadline = loop.time()
             await asyncio.sleep(max(0.0, deadline - loop.time()))
             now = loop.time()
             tick_started = perf_counter()
