@@ -420,6 +420,10 @@ class AudioManager:
         if self._bgm_channel is not None:
             self._bgm_channel.stop()
 
+    @property
+    def bgm_playing(self) -> bool:
+        return self._bgm_channel is not None and self._bgm_channel.get_busy()
+
     # --- volume / mute ------------------------------------------------
 
     def set_sfx_volume(self, volume: float):

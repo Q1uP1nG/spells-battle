@@ -411,9 +411,8 @@ def main():
             continue
 
         if key in (ord("b"), ord("B")) and audio_available:
-            if audio._bgm_channel and audio._bgm_channel.get_busy():
+            if audio.bgm_playing:
                 audio.stop_bgm()
-                audio._initialized = True
                 cv_mode_notice = "BGM OFF"
             else:
                 audio.start_bgm()
@@ -450,7 +449,7 @@ def main():
                 selected_mode = MODES_BY_KEY[key]
                 if audio_available:
                     audio.play_menu_select()
-                    if not (audio._bgm_channel and audio._bgm_channel.get_busy()):
+                    if not audio.bgm_playing:
                         audio.start_bgm()
                 if selected_mode == GameMode.REMOTE_LOBBY:
                     remote_session = RemoteBattleSession()
