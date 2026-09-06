@@ -167,6 +167,43 @@ class GestureClassifierTests(unittest.TestCase):
         self.assertEqual(spell, "overload")
         self.assertGreater(conf, 0.78)
 
+    def test_slow_long_circle_still_hits_stupefy(self):
+        from cv.gesture_classifier import classify_cv_gesture
+        # A deliberately slow circle produces far more samples than the
+        # feature cap; the whole draw must be seen, not just its trailing
+        # window, or the arc no longer closes and the circle is rejected.
+        points = self._make_circle(count=200)
+        spell, conf = classify_cv_gesture(points, "left")
+        self.assertEqual(spell, "stupefy")
+        self.assertGreater(conf, 0.78)
+
+    def test_long_zigzag_keeps_turns_across_resampling(self):
+        from cv.gesture_classifier import classify_cv_gesture
+        points = self._make_zigzag(segments=10, interpolate=15)
+        self.assertGreater(len(points), 80)
+        spell, conf = classify_cv_gesture(points, "left")
+        self.assertEqual(spell, "overload")
+        self.assertGreater(conf, 0.78)
+
+    def test_select_feature_points_preserves_full_gesture_span(self):
+        from cv.gesture_classifier import MAX_FEATURE_POINTS, select_feature_points
+        points = self._make_circle(count=200)
+
+        selected = select_feature_points(points)
+
+        self.assertLessEqual(len(selected), MAX_FEATURE_POINTS)
+        self.assertTrue(np.allclose(selected[0], points[0]))
+        self.assertTrue(np.allclose(selected[-1], points[-1]))
+
+    def test_select_feature_points_keeps_short_input_unchanged(self):
+        from cv.gesture_classifier import select_feature_points
+        points = [[float(i), float(i * 2)] for i in range(20)]
+
+        selected = select_feature_points(points)
+
+        self.assertEqual(len(selected), 20)
+        self.assertTrue(np.allclose(selected, np.asarray(points, dtype=np.float32)))
+
     def test_upward_zigzag_prefers_overload_over_lumos(self):
         from cv.gesture_classifier import classify_cv_gesture
         points = self._make_upward_zigzag()

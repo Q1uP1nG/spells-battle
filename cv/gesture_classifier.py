@@ -136,12 +136,29 @@ class GestureMatch:
 # ---------------------------------------------------------------------------
 
 
+def select_feature_points(points) -> np.ndarray:
+    """Uniformly sample at most MAX_FEATURE_POINTS points across the whole gesture.
+
+    Keeping only the trailing points made slow gestures lose their start: a
+    deliberately drawn circle longer than MAX_FEATURE_POINTS frames was turned
+    into an arc, which broke closure/area features and the cyclic gate, and
+    zigzags lost early turns.  Downsampling keeps the full time span, and the
+    first and last points are always preserved so end-point features stay honest.
+    """
+    raw = np.asarray(points, dtype=np.float32)
+    if len(raw) <= MAX_FEATURE_POINTS:
+        return raw
+    positions = np.linspace(0, len(raw) - 1, MAX_FEATURE_POINTS)
+    indices = np.unique(np.rint(positions).astype(np.int64))
+    return raw[indices]
+
+
 def extract_gesture_features(points, side) -> Optional[GestureFeatures]:
     """Compute all features from a point list. Returns None if too few points."""
     if len(points) < MIN_POINTS_FOR_FEATURES:
         return None
 
-    pts = np.array(points[-MAX_FEATURE_POINTS:], dtype=np.float32)
+    pts = select_feature_points(points)
     deltas = np.diff(pts, axis=0)
     path_len = float(np.linalg.norm(deltas, axis=1).sum())
     start = pts[0]
