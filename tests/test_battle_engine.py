@@ -53,6 +53,23 @@ class BattleEngineTests(unittest.TestCase):
         for attribute in ("particles", "sound_events", "flash_messages", "shockwaves"):
             self.assertFalse(hasattr(engine, attribute))
 
+    def test_completed_heal_cannot_resurrect_a_defeated_player(self):
+        from config import SPELLS
+
+        engine = BattleEngine(character_ids=("harry", "hermione"))
+        victim = engine.players[0]
+        victim.pending_heal = SPELLS["lumos"]["heal"]
+        victim.healing_until = 1.0
+        # The victim dropped to 0 hp while the Lumos channel was still running.
+        victim.hp = 0.0
+
+        engine.update(0.1, 1.2)
+
+        self.assertEqual(victim.hp, 0.0)
+        self.assertEqual(victim.pending_heal, 0.0)
+        self.assertEqual(engine.winner, 1)
+        self.assertNotIn("heal_completed", [event.kind for event in engine.events()])
+
     def test_source_uses_injected_time_and_has_no_client_dependencies(self):
         source = inspect.getsource(sys.modules[BattleEngine.__module__])
         tree = ast.parse(source)

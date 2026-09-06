@@ -170,20 +170,22 @@ class BattleEngine:
                 player.mana = min(MAX_MANA, player.mana + MANA_REGEN_PER_SEC * regen_mult * dt)
 
             if player.pending_heal > 0 and now >= player.healing_until:
-                player.hp = min(player.effective_max_hp(now), player.hp + player.pending_heal)
+                heal_amount = player.pending_heal
                 player.pending_heal = 0
-                mana_regen_duration = SPELLS["lumos"].get("mana_regen_duration", 0.0)
-                if mana_regen_duration > 0:
-                    player.mana_regen_boost_until = max(
-                        player.mana_regen_boost_until,
-                        now + mana_regen_duration,
+                if player.alive():
+                    player.hp = min(player.effective_max_hp(now), player.hp + heal_amount)
+                    mana_regen_duration = SPELLS["lumos"].get("mana_regen_duration", 0.0)
+                    if mana_regen_duration > 0:
+                        player.mana_regen_boost_until = max(
+                            player.mana_regen_boost_until,
+                            now + mana_regen_duration,
+                        )
+                    self._emit(
+                        "heal_completed",
+                        now,
+                        player_index=player.pid,
+                        position=_point_tuple(player.center()),
                     )
-                self._emit(
-                    "heal_completed",
-                    now,
-                    player_index=player.pid,
-                    position=_point_tuple(player.center()),
-                )
 
             if now >= player.shield_until:
                 player.shield_value = 0
