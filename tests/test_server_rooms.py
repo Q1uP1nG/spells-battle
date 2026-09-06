@@ -87,6 +87,24 @@ class ServerRoomTests(unittest.TestCase):
         self.assertNotEqual(room.match_id, previous_match_id)
         self.assertEqual(room.session.server_tick, 0)
 
+    def test_rematch_resets_cast_sequence_dedup_scope(self):
+        _, room, _, _ = self.make_full_room()
+        room.set_ready(0, True, 11.0)
+        room.set_ready(1, True, 11.0)
+        room.state = RoomState.ROUND_OVER
+        room.seats[0].last_sequence = 57
+
+        room.request_rematch(0, 12.0)
+        room.request_rematch(1, 12.1)
+
+        # Cast-sequence dedup is per match: a client that restarts its counter
+        # for the new match must not be rejected as a duplicate.
+        self.assertEqual(room.seats[0].last_sequence, 0)
+        accepted, _events = room.submit_cast(
+            0, CastIntent("incendio", 1, 1, "keyboard"), 12.2,
+        )
+        self.assertTrue(accepted)
+
     def test_room_capacity_is_explicitly_limited(self):
         manager = RoomManager(max_rooms=1)
         manager.create_room(1.0)

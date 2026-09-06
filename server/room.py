@@ -138,6 +138,11 @@ class Room:
             )
             for value in self.seats:
                 value.rematch_ready = False
+                # Cast-sequence dedup is per match: the current client keeps a
+                # global counter, but a client that restarts its sequence for a
+                # new match must not be rejected as a duplicate.
+                value.last_sequence = 0
+                value.cast_times.clear()
             self.state = RoomState.RUNNING
             self.paused = False
 
