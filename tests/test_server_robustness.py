@@ -275,6 +275,21 @@ class StructuredLoggingTests(unittest.TestCase):
         self.assertEqual(payload["context"]["nested"]["frame"], "[REDACTED]")
         self.assertNotIn("do-not-log", json.dumps(payload))
 
+    def test_exception_records_include_traceback(self):
+        import sys
+
+        try:
+            raise ValueError("handler failed")
+        except ValueError:
+            record = logging.LogRecord(
+                "spells_server", logging.ERROR, __file__, 1, "request handler failed", (), sys.exc_info(),
+            )
+
+        payload = json.loads(JsonFormatter().format(record))
+
+        self.assertIn("exception", payload)
+        self.assertIn("ValueError: handler failed", payload["exception"])
+
 
 if __name__ == "__main__":
     unittest.main()

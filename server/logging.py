@@ -28,6 +28,8 @@ class JsonFormatter(logging.Formatter):
         context = getattr(record, "context", None)
         if context:
             payload["context"] = _redact(context)
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
