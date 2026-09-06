@@ -4,3 +4,4 @@ mediapipe>=0.10
 pygame>=2.5
 Pillow>=10.0
 websockets>=16.1,<17
+PyYAML>=6.0
