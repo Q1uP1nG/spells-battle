@@ -1,8 +1,8 @@
 # Spells Battle 阿里云公网 IP 部署
 
-> 当前状态（2026-08-13）：本地服务端代码已完成并通过自动测试，但用户选择暂缓部署。
-> 公网 ECS 仍可能运行旧版本；恢复部署前应从当前提交重新生成服务端包，不能将旧服务
-> 的 health/probe 结果当作新代码验收。
+> 当前状态（2026-09-07）：提交 `2a46ab0` 已部署到公网 ECS 的现有 systemd Python
+> 服务，公网 `/health.metrics` 和完整双 WebSocket 对局探针均已通过。两台真实 Windows
+> 设备的 keyboard、CV、重连和多局 rematch 人工验收仍待执行。
 
 首版直接使用 ECS 公网 IPv4，不需要申请域名、配置 DNS、申请证书或运行 Caddy。
 

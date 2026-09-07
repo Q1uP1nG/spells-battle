@@ -2,9 +2,9 @@
 
 实施依据：`docs/next_optimization_plan.md`
 
-当前阶段：本地代码优化与自动验证已完成；部署和双设备人工验收按用户要求延期
+当前阶段：提交 `2a46ab0` 已部署并通过公网自动验收；等待双设备人工验收
 
-最近更新：2026-08-13
+最近更新：2026-09-07
 
 ## 概念边界
 
@@ -373,7 +373,7 @@ Stupefy 训练样本不足而 `unavailable`；循环候选继续保持 Shadow，
 `CV_CYCLIC_STUPEFY_PRIMARY=False`。本机本轮循环候选 p95 为 25.21ms，仍高于
 `<10ms` 晋升预算。
 
-## 延期的部署与人工验收（不属于当前代码修改）
+## 公网部署与人工验收
 
 2026-08-10 对 `ws://101.132.63.248:8765` 运行完整公网探针：健康检查、两个真实
 WebSocket、建房/加入、ready、权威施法、完整一局、胜者和最终快照一致性全部通过，
@@ -388,6 +388,26 @@ WebSocket、建房/加入、ready、权威施法、完整一局、胜者和最�
 3. 两台不同网络 Windows 设备人工完成 keyboard、finger/bright-wand CV、断线重连和
    至少三局 rematch；
 4. 人工验收完成前，不以自动探针替代真实设备结论。
+
+### 2026-09-07 新版本公网部署
+
+已将当前验证提交 `2a46ab0` 部署到 ECS `101.132.63.248` 的现有
+`spells-battle.service`。服务继续以 `spells` 用户、`/opt/spells-battle` 工作目录和
+原 `.venv`/`.env` 运行；没有改动端口、systemd unit、域名/TLS 路线或玩法配置。
+
+- 部署包：`spells-server-deploy-2a46ab0.tar.gz`（仅 26 个服务端运行文件）；
+- SHA256：`6475AB781CDAC8A3AB844A2074E0ACED58AC3D131A8A17B68CCB7742558C82BC`；
+- 回退备份：`/opt/spells-releases/pre-2a46ab0-20260907-205320.tar.gz`；
+- systemd：`active/running`，`NRestarts=0`，线上记录的提交为
+  `2a46ab0823267584819019ec187b7cf8fd591bea`；
+- 公网 `/health` 返回完整 `metrics`；探针后 Tick p95 约 `0.44ms`、发送 p95 约
+  `0.60ms`，发送超时、发送失败和背压断开均为 `0`；
+- 完整公网探针通过：两个真实 WebSocket、建房/加入、ready、权威施法、完整一局、
+  winner 与最终快照一致，耗时 `10.07s`；
+- 部署后 journal 在 warning 及以上无新记录，服务没有重启循环。
+
+公网自动验收已经完成。仍未完成的是两台不同网络 Windows 设备上的 keyboard、
+finger/bright-wand CV、断线重连和至少三局 rematch 人工验收。
 
 ## 代码审查修复（2026-09-06）
 

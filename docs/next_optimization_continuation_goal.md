@@ -1,7 +1,7 @@
 # Spells Battle 优化续跑 Goal
 
-> 状态更新（2026-08-13）：用户已明确暂不继续部署。本文件保留为未来恢复部署与
-> 双设备验收时的参考，不再作为当前代码修改任务；本地代码状态以
+> 状态更新（2026-09-07）：提交 `2a46ab0` 已部署到 ECS，公网 health/metrics 与完整
+> 对局探针通过。本文件现仅保留两台真实设备人工验收要求；事实状态以
 > `docs/next_optimization_progress.md` 为准。
 
 下面代码块只适合未来恢复 Phase 6 部署时发布。它不能重做或篡改已经完成的 Phase
@@ -49,28 +49,24 @@ docs/next_optimization_plan.md 所定义的 Spells Battle 优化 Goal。
 
 只完成 Phase 6 的剩余工作：
 
-1. 审计当前仓库和阿里云公网服务状态；
-2. 将包含 e3160be 发送解耦代码的服务端部署到 ECS `101.132.63.248`；
-3. 确认实际运行的 systemd Python 服务使用新代码；
-4. 验证公网 `/health` 返回新增 `metrics`；
-5. 对新部署版本运行完整公网双 WebSocket 对战探针；
-6. 指导并记录两台不同网络 Windows 设备的人工验收；
-7. 完成最终回归、文档和交付审计。
+公网部署、systemd/metrics 核验和完整自动探针已于 2026-09-07 完成。只剩：
 
-已生成的候选部署包为（2026-09-06 从提交 51fdf5c 的已验证工作树重新生成；
-旧的 e3160be / 74ab478 / 无提交号包已核实过时并删除）：
+1. 指导并记录两台不同网络 Windows 设备的人工验收；
+2. 将 keyboard、finger/bright-wand CV、断线重连和至少三局 rematch 的结果写回进度；
+3. 人工验收通过后完成最终交付审计。
 
-`C:\Users\15261\Desktop\spells-server-deploy-51fdf5c.tar.gz`
+本次实际部署包为（2026-09-07 从提交 `2a46ab0` 的已验证工作树生成；旧的
+e3160be / 74ab478 / 51fdf5c / 无提交号包均不得用于后续部署）：
+
+`C:\Users\15261\Desktop\spells-server-deploy-2a46ab0.tar.gz`
 
 已记录 SHA256：
 
-`5B7926C86595FA7E2AA1EB7AF0C980139E46D93263C650EC4A952D770A735EB4`
+`6475AB781CDAC8A3AB844A2074E0ACED58AC3D131A8A17B68CCB7742558C82BC`
 
-包内 46 个文件与仓库 51fdf5c 工作树逐字节一致，包含 Dockerfile、compose.yaml、
-.env.example、requirements-server.txt、config.py、game/、models/、network/、
-server/（无 __pycache__）。已验证解包后 `import server.app` 无 cv2/pygame 依赖、
-compileall 通过，且包含本轮代码审查修复（handler internal_error 兜底、rematch
-序列去重重置、日志异常堆栈）。
+包内 26 个文件，仅包含 requirements-server.txt、config.py 与服务端实际使用的
+game/models/network/server Python 文件（无 CV 语料、摄像头资源或 __pycache__）。
+已验证解包后 `import server.app` 和 compileall 通过。
 
 开始部署前必须重新计算哈希、检查包内至少包含 `server/app.py`、
 `server/connection.py`、`server/config.py`、`network/`、`game/` 和
