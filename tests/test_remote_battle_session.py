@@ -1,6 +1,10 @@
 import queue
 import asyncio
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from game.battle_engine import BattleEngine
 from game.remote_session import RemoteBattleSession, RemoteSessionState
@@ -52,6 +56,60 @@ class RemoteBattleSessionTests(unittest.TestCase):
         self.assertEqual(client.sent[0][0:2], ("create_room", {}))
         self.assertEqual(client.sent[1][1], {"room_code": "AB12CD"})
         self.assertNotIn("player_index", client.sent[1][1])
+
+    def test_pre_room_transport_retry_remains_a_lobby_connection(self):
+        session, client = self.make_session()
+        client.messages.put(
+            {"type": "transport_state", "payload": {"state": "RECONNECTING"}}
+        )
+
+        session.update(now=1.0, dt=0.0)
+
+        self.assertEqual(session.state, RemoteSessionState.CONNECTING)
+        self.assertFalse(session.has_room_assignment)
+        self.assertEqual(session.status_message, "SERVER UNREACHABLE - RETRYING")
+
+    def test_assigned_room_transport_retry_is_a_real_reconnect(self):
+        session, client = self.make_session()
+        session.player_index = 1
+        session.room_code = "ABC123"
+        session.match_id = "match"
+        session.reconnect_token = "token"
+        client.messages.put(
+            {"type": "transport_state", "payload": {"state": "RECONNECTING"}}
+        )
+
+        session.update(now=1.0, dt=0.0)
+
+        self.assertEqual(session.state, RemoteSessionState.RECONNECTING)
+        self.assertTrue(session.has_room_assignment)
+        self.assertEqual(session.disconnect_count, 1)
+
+    def test_server_url_uses_environment_before_client_config(self):
+        from game.remote_session import resolve_server_url
+
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "client_config.json"
+            config_path.write_text(
+                '{"server_url": "ws://config.example:8765"}', encoding="utf-8"
+            )
+            with patch.dict(os.environ, {"SPELLS_SERVER_URL": "ws://env.example:9000"}):
+                self.assertEqual(
+                    resolve_server_url(config_path), "ws://env.example:9000"
+                )
+
+    def test_server_url_uses_persistent_client_config(self):
+        from game.remote_session import resolve_server_url
+
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "client_config.json"
+            config_path.write_text(
+                '{"server_url": "ws://config.example:8765"}', encoding="utf-8"
+            )
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(
+                    resolve_server_url(config_path), "ws://config.example:8765"
+                )
 
     def test_remote_cast_is_pending_and_uses_server_bound_identity(self):
         session, client = self.make_session()

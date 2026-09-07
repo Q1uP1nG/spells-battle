@@ -21,6 +21,10 @@ python -m pip install -r requirements.txt
 python -m pip install -r requirements-server.txt
 ```
 
+客户端默认服务器地址由仓库根目录的 `client_config.json` 提供。环境变量
+`SPELLS_SERVER_URL` 优先级更高，可用于临时切换本地或其他服务器；不设置环境变量时，
+当前配置会直接连接 `ws://101.132.63.248:8765`。
+
 ## 本机启动
 
 终端 1：

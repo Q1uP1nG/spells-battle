@@ -191,6 +191,13 @@ The game is functional, but presentation can still improve:
 4. Improve frontend polish and reduce on-screen clutter.
 5. Deploy and run two-device public acceptance only when the deployment work is resumed.
 
+The public server deployment and automated full-round probe were completed on
+2026-09-07. `client_config.json` now supplies the default public endpoint, while
+`SPELLS_SERVER_URL` remains the highest-priority override. The remote lobby only
+transitions into the duel after the server has assigned a room code, match ID,
+player seat, and reconnect token; an initial connection retry remains in the lobby.
+Two-device camera/CV and reconnect playtesting is still pending.
+
 Do not spend more time on unmarked pen/chopstick detection unless the project goal changes.
 
 ---

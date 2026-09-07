@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 from enum import Enum
+import json
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -18,7 +20,31 @@ from network.protocol import (
 )
 
 
-DEFAULT_SERVER_URL = os.getenv("SPELLS_SERVER_URL", "ws://127.0.0.1:8765")
+LOCAL_SERVER_URL = "ws://127.0.0.1:8765"
+CLIENT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "client_config.json"
+
+
+def resolve_server_url(config_path=None):
+    """Resolve the client endpoint without baking deployment state into code.
+
+    An explicit environment variable wins.  Otherwise use the checked-in client
+    deployment config, with localhost retained as a safe development fallback.
+    """
+    environment_value = os.getenv("SPELLS_SERVER_URL", "").strip()
+    if environment_value:
+        return environment_value
+
+    path = Path(config_path) if config_path is not None else CLIENT_CONFIG_PATH
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return LOCAL_SERVER_URL
+    configured_value = payload.get("server_url") if isinstance(payload, dict) else None
+    if isinstance(configured_value, str):
+        configured_value = configured_value.strip()
+        if configured_value.startswith(("ws://", "wss://")):
+            return configured_value
+    return LOCAL_SERVER_URL
 
 
 class RemoteSessionState(str, Enum):
@@ -32,9 +58,10 @@ class RemoteSessionState(str, Enum):
 
 
 class RemoteBattleSession:
-    def __init__(self, server_url=DEFAULT_SERVER_URL, network_client=None):
+    def __init__(self, server_url=None, network_client=None):
         self.game = BattleGame(start_time=0.0)
-        self.client = network_client or NetworkClient(server_url)
+        self.server_url = str(server_url or resolve_server_url())
+        self.client = network_client or NetworkClient(self.server_url)
         self.state = RemoteSessionState.DISCONNECTED
         self.player_index = None
         self.room_code = ""
@@ -48,6 +75,16 @@ class RemoteBattleSession:
         self.rtt_ms = None
         self.disconnect_count = 0
         self._last_ping_at = 0.0
+
+    @property
+    def has_room_assignment(self):
+        """Whether the server has assigned a recoverable seat in a room."""
+        return (
+            self.player_index in (0, 1)
+            and bool(self.room_code)
+            and bool(self.match_id)
+            and bool(self.reconnect_token)
+        )
 
     def start(self):
         self.state = RemoteSessionState.CONNECTING
@@ -131,9 +168,16 @@ class RemoteBattleSession:
             if transport_state == "CONNECTING":
                 self.state = RemoteSessionState.CONNECTING
             elif transport_state == "RECONNECTING":
-                if self.state != RemoteSessionState.RECONNECTING:
-                    self.disconnect_count += 1
-                self.state = RemoteSessionState.RECONNECTING
+                if self.has_room_assignment:
+                    if self.state != RemoteSessionState.RECONNECTING:
+                        self.disconnect_count += 1
+                    self.state = RemoteSessionState.RECONNECTING
+                    self.status_message = "RECONNECTING TO ROOM"
+                else:
+                    # A failed initial connection isn't a room reconnect.  Keep
+                    # the player in the lobby where create/join remain visible.
+                    self.state = RemoteSessionState.CONNECTING
+                    self.status_message = "SERVER UNREACHABLE - RETRYING"
             elif transport_state == "CONNECTED" and self.reconnect_token and self.room_code:
                 self.client.send(
                     "reconnect",
@@ -149,6 +193,8 @@ class RemoteBattleSession:
             return
         if message_type == "transport_error":
             self.last_error = payload.get("message", "network error")
+            if not self.has_room_assignment:
+                self.status_message = "SERVER UNREACHABLE - RETRYING"
             return
         if message_type in ("room_created", "room_joined"):
             self.room_code = payload["room_code"]

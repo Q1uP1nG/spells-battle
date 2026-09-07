@@ -28,9 +28,10 @@ deploy/README.md
 ```
 
 Start a local authoritative server with `python -m server.app`, then choose menu
-option `5` in two clients. For different-network play, the first-release deployment
-uses `SPELLS_SERVER_URL=ws://ECS_PUBLIC_IP:8765`; a domain and `wss://` are an optional
-later security upgrade. See `docs/remote_duel_direct_ip_route.md`.
+option `5` in two clients. For different-network play, `client_config.json` contains
+the default deployed endpoint. `SPELLS_SERVER_URL` can override it for local testing
+or another server; a domain and `wss://` are an optional later security upgrade. See
+`docs/remote_duel_direct_ip_route.md`.
 
 Compatibility entrypoint:
 

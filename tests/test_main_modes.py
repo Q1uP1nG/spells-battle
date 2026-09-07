@@ -136,6 +136,28 @@ class MainModeTests(unittest.TestCase):
         self.assertTrue(should_reset_with_space(ord(" "), GameMode.SOLO))
         self.assertTrue(should_reset_with_space(ord(" "), GameMode.DUEL))
 
+    def test_initial_connection_retry_stays_in_remote_lobby(self):
+        from game.remote_session import RemoteBattleSession, RemoteSessionState
+        from main import should_enter_remote_duel
+
+        session = RemoteBattleSession(network_client=object())
+        session.state = RemoteSessionState.RECONNECTING
+
+        self.assertFalse(should_enter_remote_duel(session))
+
+    def test_assigned_room_can_enter_remote_duel_while_reconnecting(self):
+        from game.remote_session import RemoteBattleSession, RemoteSessionState
+        from main import should_enter_remote_duel
+
+        session = RemoteBattleSession(network_client=object())
+        session.player_index = 0
+        session.room_code = "ABC123"
+        session.match_id = "match"
+        session.reconnect_token = "token"
+        session.state = RemoteSessionState.RECONNECTING
+
+        self.assertTrue(should_enter_remote_duel(session))
+
     def test_cv_training_status_uses_training_labels_for_circle(self):
         from game.cv_training import CVTrainingSession
         from main import format_cv_training_status

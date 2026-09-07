@@ -125,6 +125,20 @@ def should_reset_with_space(key, mode):
     )
 
 
+def should_enter_remote_duel(session):
+    """Only leave the lobby after the server assigned a recoverable room seat."""
+    return bool(
+        session is not None
+        and session.has_room_assignment
+        and session.state
+        in (
+            RemoteSessionState.RUNNING,
+            RemoteSessionState.RECONNECTING,
+            RemoteSessionState.ROUND_OVER,
+        )
+    )
+
+
 def handle_cv_training_key(key, runner, cv_controller):
     if runner.mode == GameMode.CV_TRAINING:
         return runner.handle_training_key(key, cv_controller)
@@ -239,10 +253,8 @@ def main():
         # --- render -------------------------------------------------------
         if remote_session is not None:
             remote_session.update(now, dt)
-            if runner.mode == GameMode.REMOTE_LOBBY and remote_session.state in (
-                RemoteSessionState.RUNNING,
-                RemoteSessionState.RECONNECTING,
-                RemoteSessionState.ROUND_OVER,
+            if runner.mode == GameMode.REMOTE_LOBBY and should_enter_remote_duel(
+                remote_session
             ):
                 runner = ModeRunner(GameMode.REMOTE_DUEL)
 
