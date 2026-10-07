@@ -35,8 +35,8 @@ or another server; a domain and `wss://` are an optional later security upgrade.
 
 The development code uses protocol **3**, including `winner=-1` for a draw.
 Both clients and the server must use the same protocol version. As of 2026-10-07,
-the public server still runs protocol 2; the latest robustness fixes have not been
-deployed. Test this revision with a local server until the public service is updated.
+the public server runs protocol 3 with runtime code from `a29dfcb`. Update both
+clients to this revision or later before playing online.
 
 Compatibility entrypoint:
 

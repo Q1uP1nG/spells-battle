@@ -1,8 +1,8 @@
 # Spells Battle 阿里云公网 IP 部署
 
-> 当前状态（2026-09-07）：提交 `2a46ab0` 已部署到公网 ECS 的现有 systemd Python
-> 服务，公网 `/health.metrics` 和完整双 WebSocket 对局探针均已通过。两台真实 Windows
-> 设备的 keyboard、CV、重连和多局 rematch 人工验收仍待执行。
+> 当前状态（2026-10-07）：运行代码 `a29dfcb` 已部署到公网 ECS 的现有 systemd
+> Python 服务，使用协议 3。健康检查、完整双 WebSocket 对局、准备后重连自动开局、
+> 过期通知及同一连接重新建房均已通过。玩家须更新两个客户端；双设备人工验收仍待执行。
 
 首版直接使用 ECS 公网 IPv4，不需要申请域名、配置 DNS、申请证书或运行 Caddy。
 
