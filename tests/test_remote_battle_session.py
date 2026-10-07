@@ -9,6 +9,7 @@ from unittest.mock import patch
 from game.battle_engine import BattleEngine
 from game.remote_session import RemoteBattleSession, RemoteSessionState
 from game.snapshots import snapshot_from_engine
+from network.client import NetworkClient
 from network.protocol import event_to_payload, snapshot_to_payload
 from server.app import BattleServer
 from server.config import ServerConfig
@@ -26,6 +27,12 @@ class FakeNetworkClient:
 
     def send(self, message_type, payload, request_id=None):
         self.sent.append((message_type, payload, request_id))
+
+    def send_priority(self, message_type, payload, request_id=None):
+        self.sent.append((message_type, payload, request_id))
+
+    def resume_sending(self):
+        pass
 
     def drain(self, limit=256):
         values = []
@@ -202,6 +209,70 @@ class RemoteBattleSessionTests(unittest.TestCase):
 
         self.assertEqual(session.state, RemoteSessionState.RUNNING)
         self.assertEqual(session.player_index, 0)
+        self.assertTrue(session.round_started)
+
+    def test_reconnecting_before_round_keeps_round_unstarted(self):
+        session, client = self.make_session()
+        client.messages.put(
+            {"type": "transport_state", "payload": {"state": "CONNECTING"}}
+        )
+        client.messages.put(
+            {"type": "transport_state", "payload": {"state": "RECONNECTING"}}
+        )
+
+        session.update(now=1.0, dt=0.0)
+
+        self.assertEqual(session.state, RemoteSessionState.CONNECTING)
+        self.assertFalse(session.round_started)
+
+    def test_reconnecting_during_round_keeps_round_started(self):
+        session, client = self.make_session()
+        session.player_index = 0
+        session.reconnect_token = "token"
+        client.messages.put(
+            {
+                "type": "room_state",
+                "payload": {
+                    "room_code": "ABC123",
+                    "match_id": "active-match",
+                    "state": "RUNNING",
+                    "paused": False,
+                    "players": [None, None],
+                },
+            }
+        )
+        client.messages.put(
+            {"type": "transport_state", "payload": {"state": "RECONNECTING"}}
+        )
+
+        session.update(now=1.0, dt=0.0)
+
+        self.assertEqual(session.state, RemoteSessionState.RECONNECTING)
+        self.assertTrue(session.round_started)
+
+    def test_new_match_resets_round_started_flag(self):
+        session, client = self.make_session()
+        session.match_id = "old-match"
+        session.player_index = 0
+        session.round_started = True
+        client.messages.put(
+            {
+                "type": "room_state",
+                "payload": {
+                    "room_code": "ABC123",
+                    "match_id": "new-match",
+                    "state": "WAITING",
+                    "paused": False,
+                    "players": [None, None],
+                },
+            }
+        )
+
+        session.update(now=1.0, dt=0.0)
+
+        self.assertEqual(session.match_id, "new-match")
+        self.assertFalse(session.round_started)
+        self.assertEqual(session.state, RemoteSessionState.WAITING)
 
     def test_rematch_request_is_a_session_command(self):
         session, client = self.make_session()
@@ -287,6 +358,65 @@ class RemoteBattleSessionIntegrationTests(unittest.IsolatedAsyncioTestCase):
             and self.first.game.winner is None
             and self.second.game.winner is None
         )
+
+    async def test_lobby_command_queued_during_disconnect_runs_after_reconnect(self):
+        await asyncio.to_thread(self.first.close)
+        self.first = RemoteBattleSession(
+            server_url=f"ws://127.0.0.1:{self.server.port}",
+            network_client=NetworkClient(
+                f"ws://127.0.0.1:{self.server.port}", reconnect_delay=1.0
+            ),
+        )
+        self.first.start()
+        await self.wait_for(lambda: self.first.client.state.value == "CONNECTED")
+        self.first.create_room()
+        await self.wait_for(lambda: bool(self.first.room_code))
+        self.second.join_room(self.first.room_code)
+        await self.wait_for(lambda: self.second.player_index == 1)
+
+        room = next(iter(self.server.rooms.rooms.values()))
+        connection = next(
+            value
+            for value in self.server._connections.values()
+            if value.room_code == room.room_code and value.player_index == 0
+        )
+        await connection.websocket.close()
+        await self.wait_for(lambda: self.first.state == RemoteSessionState.RECONNECTING)
+
+        self.first.select_character("snape")
+        await self.wait_for(
+            lambda: room.seats[0].character_id == "snape"
+            and self.first.game.players[0].character_id == "snape"
+            and self.second.game.players[0].character_id == "snape",
+            timeout=5.0,
+        )
+        self.assertEqual(self.first.game.players[0].character_id, "snape")
+
+    async def test_running_round_resumes_after_disconnect(self):
+        self.first.create_room()
+        await self.wait_for(lambda: bool(self.first.room_code))
+        self.second.join_room(self.first.room_code)
+        await self.wait_for(lambda: self.second.player_index == 1)
+        self.first.set_ready()
+        self.second.set_ready()
+        await self.wait_for(
+            lambda: self.first.state == self.second.state == RemoteSessionState.RUNNING
+        )
+        match_id = self.first.match_id
+        connection = next(
+            value for value in self.server._connections.values()
+            if value.room_code == self.first.room_code and value.player_index == 0
+        )
+        await connection.websocket.close()
+        await self.wait_for(lambda: self.first.disconnect_count > 0)
+        await self.wait_for(
+            lambda: self.first.state == self.second.state == RemoteSessionState.RUNNING
+            and not self.server.rooms.get(self.first.room_code).paused,
+            timeout=5.0,
+        )
+        self.assertEqual(self.first.match_id, match_id)
+        self.assertTrue(self.first.round_started)
+        self.assertEqual(self.first.player_index, 0)
 
 
 if __name__ == "__main__":

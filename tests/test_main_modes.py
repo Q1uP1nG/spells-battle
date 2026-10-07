@@ -145,7 +145,7 @@ class MainModeTests(unittest.TestCase):
 
         self.assertFalse(should_enter_remote_duel(session))
 
-    def test_assigned_room_can_enter_remote_duel_while_reconnecting(self):
+    def test_assigned_room_stays_in_lobby_until_round_starts(self):
         from game.remote_session import RemoteBattleSession, RemoteSessionState
         from main import should_enter_remote_duel
 
@@ -156,6 +156,8 @@ class MainModeTests(unittest.TestCase):
         session.reconnect_token = "token"
         session.state = RemoteSessionState.RECONNECTING
 
+        self.assertFalse(should_enter_remote_duel(session))
+        session.round_started = True
         self.assertTrue(should_enter_remote_duel(session))
 
     def test_cv_training_status_uses_training_labels_for_circle(self):
@@ -179,6 +181,27 @@ class MainModeTests(unittest.TestCase):
 
         self.assertEqual(MODES_BY_KEY[ord("5")], GameMode.REMOTE_LOBBY)
         self.assertEqual(MODES_BY_KEY[ord("4")], GameMode.CV_TRAINING)
+
+    def test_remote_reconnect_enters_duel_only_after_round_has_started(self):
+        from types import SimpleNamespace
+        from game.remote_session import RemoteSessionState
+        from main import should_enter_remote_duel
+
+        self.assertFalse(should_enter_remote_duel(SimpleNamespace(
+            state=RemoteSessionState.RECONNECTING,
+            has_room_assignment=True,
+            round_started=False,
+        )))
+        self.assertTrue(should_enter_remote_duel(SimpleNamespace(
+            state=RemoteSessionState.RECONNECTING,
+            has_room_assignment=True,
+            round_started=True,
+        )))
+        self.assertTrue(should_enter_remote_duel(SimpleNamespace(
+            state=RemoteSessionState.RUNNING,
+            has_room_assignment=True,
+            round_started=True,
+        )))
 
     def test_character_keys_cycle_players_with_af_and_jk(self):
         from game.battle import BattleGame

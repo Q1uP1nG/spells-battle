@@ -158,7 +158,9 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
         connection.start_writer()
         connection.enqueue("battle_event", {"sequence": 1})
 
-        await asyncio.sleep(0.02)
+        deadline = asyncio.get_running_loop().time() + 1.0
+        while websocket.closed is None and asyncio.get_running_loop().time() < deadline:
+            await asyncio.sleep(0.005)
         await connection.stop_writer()
 
         self.assertEqual(websocket.closed, (1013, "client send timeout"))

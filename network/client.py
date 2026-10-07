@@ -28,9 +28,12 @@ class NetworkClient:
         self.max_message_size = int(max_message_size)
         self.incoming = queue.Queue()
         self.outgoing = queue.Queue()
+        self.priority_outgoing = queue.Queue()
         self.state = ConnectionState.DISCONNECTED
         self._thread = None
         self._stop = threading.Event()
+        self._resume_sending = threading.Event()
+        self._resume_sending.set()
 
     def start(self):
         if self._thread is not None and self._thread.is_alive():
@@ -43,6 +46,14 @@ class NetworkClient:
         if self.state == ConnectionState.CLOSED:
             raise RuntimeError("network client is closed")
         self.outgoing.put((message_type, dict(payload), request_id))
+
+    def send_priority(self, message_type, payload, request_id=None):
+        if self.state == ConnectionState.CLOSED:
+            raise RuntimeError("network client is closed")
+        self.priority_outgoing.put((message_type, dict(payload), request_id))
+
+    def resume_sending(self):
+        self._resume_sending.set()
 
     def drain(self, limit=256):
         messages = []
@@ -71,6 +82,7 @@ class NetworkClient:
 
     async def _run(self):
         first_attempt = True
+        has_connected = False
         while not self._stop.is_set():
             self._set_state(
                 ConnectionState.CONNECTING if first_attempt else ConnectionState.RECONNECTING
@@ -82,7 +94,10 @@ class NetworkClient:
                     ping_interval=20,
                     ping_timeout=20,
                 ) as websocket:
+                    if has_connected:
+                        self._resume_sending.clear()
                     self._set_state(ConnectionState.CONNECTED)
+                    has_connected = True
                     await self._connected_loop(websocket)
             except (OSError, ConnectionClosed, asyncio.TimeoutError) as exc:
                 self.incoming.put(
@@ -96,17 +111,22 @@ class NetworkClient:
 
     async def _connected_loop(self, websocket):
         while not self._stop.is_set():
-            while True:
-                try:
-                    message_type, payload, request_id = self.outgoing.get_nowait()
-                except queue.Empty:
-                    break
-                await websocket.send(encode_message(message_type, payload, request_id))
+            await self._send_queued(websocket, self.priority_outgoing)
+            if self._resume_sending.is_set():
+                await self._send_queued(websocket, self.outgoing)
             try:
                 raw = await asyncio.wait_for(websocket.recv(), timeout=0.03)
             except asyncio.TimeoutError:
                 continue
             self.incoming.put(decode_message(raw))
+
+    async def _send_queued(self, websocket, outgoing):
+        while True:
+            try:
+                message_type, payload, request_id = outgoing.get_nowait()
+            except queue.Empty:
+                return
+            await websocket.send(encode_message(message_type, payload, request_id))
 
     def _set_state(self, state):
         if self.state == state:

@@ -126,15 +126,13 @@ def should_reset_with_space(key, mode):
 
 
 def should_enter_remote_duel(session):
-    """Only leave the lobby after the server assigned a recoverable room seat."""
+    """Keep room reconnects in the lobby until a round has actually started."""
     return bool(
         session is not None
         and session.has_room_assignment
-        and session.state
-        in (
-            RemoteSessionState.RUNNING,
-            RemoteSessionState.RECONNECTING,
-            RemoteSessionState.ROUND_OVER,
+        and (
+            session.state in (RemoteSessionState.RUNNING, RemoteSessionState.ROUND_OVER)
+            or (session.state == RemoteSessionState.RECONNECTING and session.round_started)
         )
     )
 

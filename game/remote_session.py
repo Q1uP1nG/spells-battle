@@ -66,6 +66,7 @@ class RemoteBattleSession:
         self.player_index = None
         self.room_code = ""
         self.match_id = ""
+        self.round_started = False
         self.reconnect_token = ""
         self.status_message = "DISCONNECTED"
         self.last_error = ""
@@ -179,7 +180,7 @@ class RemoteBattleSession:
                     self.state = RemoteSessionState.CONNECTING
                     self.status_message = "SERVER UNREACHABLE - RETRYING"
             elif transport_state == "CONNECTED" and self.reconnect_token and self.room_code:
-                self.client.send(
+                self.client.send_priority(
                     "reconnect",
                     {
                         "room_code": self.room_code,
@@ -187,6 +188,7 @@ class RemoteBattleSession:
                     },
                 )
             elif transport_state == "CONNECTED":
+                self.client.resume_sending()
                 self.status_message = "CONNECTED"
             elif transport_state in ("DISCONNECTED", "CLOSED"):
                 self.state = RemoteSessionState.DISCONNECTED
@@ -198,10 +200,15 @@ class RemoteBattleSession:
             return
         if message_type in ("room_created", "room_joined"):
             self.room_code = payload["room_code"]
-            self.match_id = payload["match_id"]
+            incoming_match_id = payload["match_id"]
+            if self.match_id and incoming_match_id != self.match_id:
+                self.round_started = False
+                self.interpolator = SnapshotInterpolator()
+            self.match_id = incoming_match_id
             self.player_index = payload["player_index"]
             if "reconnect_token" in payload:
                 self.reconnect_token = payload["reconnect_token"]
+            self.client.resume_sending()
             self.state = RemoteSessionState.WAITING
             self.status_message = f"ROOM {self.room_code} - P{self.player_index + 1}"
             return
@@ -235,6 +242,7 @@ class RemoteBattleSession:
         self.room_code = payload["room_code"]
         incoming_match_id = payload["match_id"]
         if self.match_id and incoming_match_id != self.match_id:
+            self.round_started = False
             self.interpolator = SnapshotInterpolator()
         self.match_id = incoming_match_id
         for player_value in payload.get("players", []):
@@ -244,8 +252,10 @@ class RemoteBattleSession:
                 if self.game.players[index].character_id != character_id:
                     self.game.set_player_character(index, character_id)
         if state == "RUNNING":
+            self.round_started = True
             self.state = RemoteSessionState.RECONNECTING if payload.get("paused") else RemoteSessionState.RUNNING
         elif state == "ROUND_OVER":
+            self.round_started = True
             self.state = RemoteSessionState.ROUND_OVER
         elif self.player_index is not None:
             own = payload.get("players", [None, None])[self.player_index]

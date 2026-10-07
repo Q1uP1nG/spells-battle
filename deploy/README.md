@@ -6,6 +6,22 @@
 
 首版直接使用 ECS 公网 IPv4，不需要申请域名、配置 DNS、申请证书或运行 Caddy。
 
+## 当前 ECS 的更新方式
+
+现有公网 ECS 使用 `spells-battle.service`，运行目录为 `/opt/spells-battle`，
+服务用户为 `spells`，Python 来自该目录的 `.venv`。更新这台现有服务器时沿用
+systemd；下方 Docker 步骤用于新环境。
+
+1. 完成本地测试并将代码提交推送到 GitHub，按该提交生成运行代码包。
+2. 校验上传包的 SHA256，在临时目录中用现有 Python 环境检查服务端导入。
+3. 检查 `/health` 的房间数和连接数均为零，备份运行代码及 `DEPLOYED_COMMIT`。
+4. 更新运行代码，保留 `.env`、`.venv` 和 systemd unit，写入部署提交号并重启服务。
+5. 检查服务状态、提交号、健康接口及完整公网对局探针；失败时恢复备份并重启。
+
+2026-10-07 的本地重连修复保留公网客户端配置，开局前断线停留在大厅；
+恢复连接后先发送房间重连请求，收到服务器确认后才发送排队的普通命令。
+本地 `python -m unittest discover -s tests` 验证通过，共 522 项测试。
+
 ## 前提
 
 - 一台带公网 IPv4 的 Linux ECS；
