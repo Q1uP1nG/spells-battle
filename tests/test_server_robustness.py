@@ -203,7 +203,7 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(connection.send_stats.send_failure_count, 1)
         self.assertEqual(connection.send_stats.messages_sent, 0)
 
-    async def test_blocked_sender_does_not_reduce_authoritative_tick_frequency(self):
+    async def test_blocked_sender_does_not_stall_authoritative_ticks(self):
         config = ServerConfig(port=0, tick_rate=100, snapshot_rate=100)
         server = BattleServer(config)
         room = TickRoom()
@@ -218,7 +218,11 @@ class ServerRobustnessTests(unittest.IsolatedAsyncioTestCase):
         server._connections = {connection.websocket: connection}
 
         tick_task = asyncio.create_task(server._tick_loop())
-        await asyncio.sleep(0.07)
+        # Allow for OS scheduling jitter; the sender blocks for five seconds,
+        # so five ticks must progress independently within this shorter deadline.
+        deadline = asyncio.get_running_loop().time() + 0.5
+        while room.steps < 5 and asyncio.get_running_loop().time() < deadline:
+            await asyncio.sleep(0.005)
         server._closing = True
         await asyncio.wait_for(tick_task, timeout=0.1)
         await connection.stop_writer()

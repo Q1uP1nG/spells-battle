@@ -5,6 +5,7 @@ import math
 from typing import Mapping, Optional
 
 import numpy as np
+from cv.trajectory import validated_points
 
 
 GESTURE_PIPELINE_VERSION = "gesture-pipeline-v2-normalized-shadow"
@@ -92,8 +93,9 @@ def normalize_points_for_context(points, context: Optional[GestureClassification
     """
 
     context = context or GestureClassificationContext()
-    pts = np.asarray(points, dtype=np.float32)
-    if pts.ndim != 2 or pts.shape[1] < 2 or len(pts) == 0:
+    pts = validated_points(points, minimum=1)
+    if pts is None:
+        pts = np.empty((0, 2), dtype=np.float32)
         return pts, NormalizedFeatureMetadata(
             feature_version=NORMALIZED_FEATURE_VERSION,
             scale_source="unavailable",

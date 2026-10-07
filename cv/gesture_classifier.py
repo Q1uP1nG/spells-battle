@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 import numpy as np
+from cv.trajectory import validated_points
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +156,8 @@ def select_feature_points(points) -> np.ndarray:
 
 def extract_gesture_features(points, side) -> Optional[GestureFeatures]:
     """Compute all features from a point list. Returns None if too few points."""
-    if len(points) < MIN_POINTS_FOR_FEATURES:
+    points = validated_points(points, MIN_POINTS_FOR_FEATURES)
+    if points is None or side not in ("left", "right"):
         return None
 
     pts = select_feature_points(points)
@@ -168,6 +170,8 @@ def extract_gesture_features(points, side) -> Optional[GestureFeatures]:
     x_span = float(pts[:, 0].max() - pts[:, 0].min())
     y_span = float(pts[:, 1].max() - pts[:, 1].min())
     straightness = float(np.linalg.norm(end - start) / max(path_len, 1.0))
+    if not np.isfinite([dx, dy, x_span, y_span, path_len, straightness]).all():
+        return None
     opponent_dx = dx if side == "left" else -dx
     turn_count = count_direction_turns(pts)
     area = abs(signed_polyline_area(pts))

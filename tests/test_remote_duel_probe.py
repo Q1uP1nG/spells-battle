@@ -25,7 +25,8 @@ class RemoteDuelProbeTests(unittest.IsolatedAsyncioTestCase):
             await server.stop()
 
         self.assertTrue(report["ok"])
-        self.assertEqual(report["protocol_version"], 2)
+        from game.snapshots import PROTOCOL_VERSION
+        self.assertEqual(report["protocol_version"], PROTOCOL_VERSION)
         self.assertFalse(report["full_round"])
 
     def test_health_url_tracks_websocket_tls_scheme(self):

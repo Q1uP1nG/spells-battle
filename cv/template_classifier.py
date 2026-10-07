@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+from cv.trajectory import advances_toward_opponent, validated_points
 
 TARGET_POINT_COUNT = 32
 DTW_ACCEPT_THRESHOLD = 1.5
@@ -17,11 +18,8 @@ CYCLIC_TEMPLATE_ALGORITHM_VERSION = "data-template-dtw-v2-cyclic-stupefy"
 
 
 def _normalize_trajectory(points) -> Optional[np.ndarray]:
-    if not points or len(points) < 2:
-        return None
-
-    pts = np.array(points, dtype=np.float32)
-    if pts.ndim != 2 or pts.shape[1] < 2:
+    pts = validated_points(points)
+    if pts is None:
         return None
 
     resampled = _resample_arc_length(pts, TARGET_POINT_COUNT)
@@ -323,7 +321,15 @@ class DataTemplateClassifier:
         self.template_pack_version = None
         self.loaded = False
         self.load_error = ""
-        self._load()
+        try:
+            self._load()
+        except (TypeError, ValueError, OverflowError, AttributeError) as exc:
+            self._prototypes.clear()
+            self._prototype_ids.clear()
+            self._thresholds.clear()
+            self._margin_thresholds.clear()
+            self.loaded = False
+            self.load_error = f"template pack invalid: {exc}"
 
     @property
     def spells(self):
@@ -345,15 +351,24 @@ class DataTemplateClassifier:
             self.load_error = "template pack invalid: root must be an object"
             return
 
-        target_count = int(payload.get("target_point_count") or TARGET_POINT_COUNT)
+        target_count = payload.get("target_point_count", TARGET_POINT_COUNT)
+        if type(target_count) is not int or target_count != TARGET_POINT_COUNT:
+            raise ValueError(f"target_point_count must be {TARGET_POINT_COUNT}")
         self.template_pack_version = payload.get("version")
         prototypes = payload.get("prototypes") or {}
         thresholds = payload.get("thresholds") or {}
         margin_thresholds = payload.get("margin_thresholds") or {}
         cyclic_config = payload.get("cyclic_dtw") or {}
+        if not all(isinstance(value, dict) for value in
+                   (prototypes, thresholds, margin_thresholds, cyclic_config)):
+            raise ValueError("prototype and threshold sections must be objects")
         if self.allow_cyclic_reverse is None:
             self.allow_cyclic_reverse = bool(cyclic_config.get("allow_reverse", False))
         for spell, arrays in prototypes.items():
+            if spell not in ("incendio", "stupefy", "circle", "glacius", "lumos", "overload"):
+                raise ValueError(f"unsupported template label: {spell}")
+            if not isinstance(arrays, list):
+                raise ValueError("prototypes must be lists")
             mats = []
             prototype_ids = []
             for index, item in enumerate(arrays or []):
@@ -363,10 +378,11 @@ class DataTemplateClassifier:
                 else:
                     array = item
                     prototype_id = f"{spell}:legacy:{index}"
-                mat = np.asarray(array, dtype=np.float32)
-                if mat.ndim == 2 and mat.shape == (target_count, 2):
-                    mats.append(mat)
-                    prototype_ids.append(prototype_id)
+                mat = validated_points(array)
+                if mat is None or mat.shape != (target_count, 2):
+                    raise ValueError(f"invalid prototype for {spell}")
+                mats.append(mat)
+                prototype_ids.append(prototype_id)
             if mats:
                 self._prototypes[spell] = mats
                 self._prototype_ids[spell] = prototype_ids
@@ -374,6 +390,10 @@ class DataTemplateClassifier:
                 self._margin_thresholds[spell] = float(
                     margin_thresholds.get(spell, DEFAULT_MARGIN_THRESHOLD)
                 )
+                if not math.isfinite(self._thresholds[spell]) or self._thresholds[spell] <= 0:
+                    raise ValueError("distance thresholds must be finite and positive")
+                if not math.isfinite(self._margin_thresholds[spell]) or self._margin_thresholds[spell] < 0:
+                    raise ValueError("margin thresholds must be finite and non-negative")
 
         self.loaded = bool(self._prototypes)
         if not self.loaded and not self.load_error:
@@ -467,7 +487,7 @@ class DataTemplateClassifier:
                 spell=None,
                 confidence=0.0,
                 method="data_template",
-                reason="too few points to normalize",
+                reason="invalid or insufficient trajectory",
                 algorithm_version=(
                     CYCLIC_TEMPLATE_ALGORITHM_VERSION
                     if self.enable_cyclic_stupefy else DATA_TEMPLATE_ALGORITHM_VERSION
@@ -487,6 +507,7 @@ class DataTemplateClassifier:
                 )
 
         ranked, gate = self._rank_spells(normalized, points)
+        ranked = [match for match in ranked if math.isfinite(match["distance"])]
         if not ranked:
             return ClassificationResult(
                 spell=None,
@@ -551,6 +572,11 @@ class DataTemplateClassifier:
             )
 
         cast_spell = template_label_to_spell(best_spell)
+        if cast_spell == "incendio" and not advances_toward_opponent(points, side):
+            return ClassificationResult(
+                spell=None, confidence=0.0, method="data_template",
+                reason="incendio must advance toward opponent", **structured,
+            )
         return ClassificationResult(
             spell=cast_spell,
             confidence=confidence,

@@ -93,7 +93,7 @@ def decode_message(raw):
             "version_mismatch",
             f"expected protocol {PROTOCOL_VERSION}, got {envelope['protocol_version']!r}",
         )
-    if envelope["type"] not in MESSAGE_TYPES:
+    if not isinstance(envelope["type"], str) or envelope["type"] not in MESSAGE_TYPES:
         raise ProtocolError("unknown_type", f"unknown message type: {envelope['type']!r}")
     _require_mapping(envelope["payload"], "payload")
     return {

@@ -23,6 +23,9 @@ from models.player import Player
 from models.projectile import Projectile
 
 
+DRAW = -1
+
+
 def _point_tuple(point) -> tuple[float, float]:
     return float(point[0]), float(point[1])
 
@@ -202,16 +205,17 @@ class BattleEngine:
         self.resolve_hits(now)
         self.projectiles = [projectile for projectile in self.projectiles if projectile.active]
 
-        for player in self.players:
-            if player.hp <= 0 and self.winner is None:
-                self.winner = 1 - player.pid
-                self._emit(
-                    "round_ended",
-                    now,
-                    winner=self.winner,
-                    defeated_player=player.pid,
-                    position=_point_tuple(player.center()),
-                )
+        defeated = [player for player in self.players if player.hp <= 0]
+        if defeated and self.winner is None:
+            self.winner = DRAW if len(defeated) == 2 else 1 - defeated[0].pid
+            position = (self.players[0].center() + self.players[1].center()) / 2
+            if self.winner != DRAW:
+                position = defeated[0].center()
+            self._emit(
+                "round_ended", now, winner=self.winner,
+                defeated_player=None if self.winner == DRAW else defeated[0].pid,
+                position=_point_tuple(position),
+            )
 
     def resolve_projectile_collisions(self, now):
         for index, first in enumerate(self.projectiles):

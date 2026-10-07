@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 
 
 def _remaining(until, now):
@@ -52,7 +52,7 @@ class BattleSnapshot:
     match_time: float
     players: tuple[PlayerSnapshot, PlayerSnapshot]
     projectiles: tuple[ProjectileSnapshot, ...]
-    winner: int | None
+    winner: int | None  # None: ongoing; -1: draw; 0/1: winning player index.
 
 
 def snapshot_from_engine(engine, match_id, server_tick, match_time):

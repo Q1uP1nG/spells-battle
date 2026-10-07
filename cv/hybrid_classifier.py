@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from cv.gesture_pipeline import ClassificationResult
 from cv.template_classifier import _dtw_distance, _normalize_trajectory, template_label_to_spell
+from cv.trajectory import advances_toward_opponent
 
 RUNTIME_TEMPLATE_SCORE_DISTANCE = 0.35
 RUNTIME_TEMPLATE_ACCEPT_MIN = 0.78
@@ -64,6 +66,8 @@ def _load_templates_from_file(path: Path) -> list[RuntimeGestureTemplate]:
 
 
 def _is_accepted_training_event(event: dict) -> bool:
+    if not isinstance(event, dict):
+        return False
     spell = event.get("intended_spell")
     if spell not in TRAJECTORY_SPELLS:
         return False
@@ -110,12 +114,16 @@ class RuntimeTemplateClassifier:
                 spell=None,
                 confidence=0.0,
                 method="runtime_template",
-                reason="too few points to normalize",
+                reason="invalid or insufficient trajectory",
             )
 
         best_distance_by_spell: dict[str, float] = {}
         for template in self._templates:
+            if template.spell == "incendio" and not advances_toward_opponent(points, side):
+                continue
             distance = _dtw_distance(normalized, template.normalized)
+            if not math.isfinite(distance):
+                continue
             current = best_distance_by_spell.get(template.spell)
             if current is None or distance < current:
                 best_distance_by_spell[template.spell] = distance

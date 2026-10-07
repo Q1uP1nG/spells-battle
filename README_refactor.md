@@ -33,6 +33,11 @@ the default deployed endpoint. `SPELLS_SERVER_URL` can override it for local tes
 or another server; a domain and `wss://` are an optional later security upgrade. See
 `docs/remote_duel_direct_ip_route.md`.
 
+The development code uses protocol **3**, including `winner=-1` for a draw.
+Both clients and the server must use the same protocol version. As of 2026-10-07,
+the public server still runs protocol 2; the latest robustness fixes have not been
+deployed. Test this revision with a local server until the public service is updated.
+
 Compatibility entrypoint:
 
 ```bash

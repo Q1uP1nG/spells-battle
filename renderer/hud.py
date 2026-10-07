@@ -1,6 +1,7 @@
 import cv2
 
 from config import HEIGHT, MAX_MANA, SPELLS, THEME, WIDTH
+from game.battle_engine import DRAW
 from renderer.effects import draw_bar
 from renderer.text import draw_centered_text, draw_cv_text, draw_text
 
@@ -107,7 +108,7 @@ def draw_hud(frame, game, now, fps, cv_status="CV OFF", title="SPELLS BATTLE MVP
         overlay = frame.copy()
         cv2.rectangle(overlay, (0, 0), (WIDTH, HEIGHT), THEME["bg"], -1)
         cv2.addWeighted(overlay, 0.55, frame, 0.45, 0, frame)
-        text = f"{game.players[game.winner].display_name} WINS"
+        text = "DRAW" if game.winner == DRAW else f"{game.players[game.winner].display_name} WINS"
         draw_centered_text(frame, text, WIDTH // 2, HEIGHT // 2, size=52, color=THEME["text"], face="title")
         draw_centered_text(frame, "Press SPACE to restart", WIDTH // 2, HEIGHT // 2 + 50, size=24, color=THEME["muted"])
     elif solo_dummy_defeated:
