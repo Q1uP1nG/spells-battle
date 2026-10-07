@@ -3,6 +3,7 @@ import asyncio
 import os
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -34,6 +35,9 @@ class FakeNetworkClient:
     def resume_sending(self):
         pass
 
+    def reset_room_commands(self):
+        self.sent.clear()
+
     def drain(self, limit=256):
         values = []
         while len(values) < limit:
@@ -63,6 +67,39 @@ class RemoteBattleSessionTests(unittest.TestCase):
         self.assertEqual(client.sent[0][0:2], ("create_room", {}))
         self.assertEqual(client.sent[1][1], {"room_code": "AB12CD"})
         self.assertNotIn("player_index", client.sent[1][1])
+
+    def test_expired_reconnect_releases_room_and_allows_create(self):
+        session, client = self.make_session()
+        session.player_index = 0
+        session.room_code = "ABC123"
+        session.match_id = "old"
+        session.reconnect_token = "token"
+        session.round_started = True
+        session.state = RemoteSessionState.RECONNECTING
+        session.set_ready()
+        session._handle_message({"type": "error", "payload": {
+            "code": "room_not_found", "message": "room expired"}}, 1.0)
+        self.assertFalse(session.has_room_assignment)
+        self.assertIsNone(session.player_index)
+        self.assertFalse(session.round_started)
+        self.assertEqual(client.sent, [])
+        session.create_room()
+        self.assertEqual(client.sent[0][0], "create_room")
+
+    def test_successful_room_join_clears_stale_error(self):
+        session, _ = self.make_session()
+        session.last_error = "connection failed"
+        session._handle_message({"type": "room_joined", "payload": {
+            "room_code": "ABC123", "match_id": "new", "player_index": 0,
+            "reconnect_token": "token"}}, 1.0)
+        self.assertEqual(session.last_error, "")
+
+    def test_successful_connection_clears_initial_connection_error(self):
+        session, _ = self.make_session()
+        session.last_error = "connection failed"
+        session._handle_message({"type": "transport_state", "payload": {
+            "state": "CONNECTED"}}, 1.0)
+        self.assertEqual(session.last_error, "")
 
     def test_pre_room_transport_retry_remains_a_lobby_connection(self):
         session, client = self.make_session()
@@ -134,6 +171,7 @@ class RemoteBattleSessionTests(unittest.TestCase):
 
     def test_snapshot_updates_render_view_without_advancing_authority(self):
         session, client = self.make_session()
+        session.match_id = "match-remote"
         engine = BattleEngine(("hermione", "snape"))
         engine.cast_spell(0, "incendio", 1.0)
         snapshot = snapshot_from_engine(engine, "match-remote", 7, 1.1)
@@ -149,9 +187,10 @@ class RemoteBattleSessionTests(unittest.TestCase):
 
     def test_server_event_drives_existing_local_presentation(self):
         session, client = self.make_session()
+        session.match_id = "match-remote"
         engine = BattleEngine()
         engine.cast_spell(0, "protego", 1.0)
-        event = engine.drain_events()[0]
+        event = replace(engine.drain_events()[0], match_id=session.match_id)
         client.messages.put({"type": "battle_event", "payload": event_to_payload(event)})
 
         session.update(now=20.0, dt=0.0)
@@ -175,6 +214,25 @@ class RemoteBattleSessionTests(unittest.TestCase):
 
         self.assertEqual(session.game.players[0].hp, initial_hp)
         self.assertIsNone(session.interpolator.current)
+
+    def test_closed_room_ignores_late_snapshot_and_event(self):
+        session, client = self.make_session()
+        session.room_code = "ABC123"
+        session.match_id = "old"
+        engine = BattleEngine()
+        engine.cast_spell(0, "protego", 1.0)
+        engine.players[0].hp = 1.0
+        client.messages.put({"type": "room_state", "payload": {
+            "room_code": "ABC123", "match_id": "old", "state": "CLOSED"}})
+        client.messages.put({"type": "battle_snapshot", "payload":
+                             snapshot_to_payload(snapshot_from_engine(engine, "old", 99, 2.0))})
+        client.messages.put({"type": "battle_event", "payload":
+                             event_to_payload(replace(engine.drain_events()[0], match_id="old"))})
+        session.update(3.0, 0.0)
+        self.assertFalse(session.has_room_assignment)
+        self.assertIsNone(session.interpolator.current)
+        self.assertEqual(session.game.players[0].hp, session.game.players[0].max_hp)
+        self.assertEqual(session.game.sound_events, [])
 
     def test_room_states_are_explicit(self):
         session, client = self.make_session()
@@ -417,6 +475,42 @@ class RemoteBattleSessionIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.first.match_id, match_id)
         self.assertTrue(self.first.round_started)
         self.assertEqual(self.first.player_index, 0)
+
+    async def test_expired_room_notifies_peer_and_allows_new_room_on_same_socket(self):
+        self.first.create_room()
+        await self.wait_for(lambda: bool(self.first.room_code))
+        old_code = self.first.room_code
+        self.second.join_room(old_code)
+        await self.wait_for(lambda: self.second.player_index == 1)
+        self.first.set_ready()
+        self.second.set_ready()
+        await self.wait_for(
+            lambda: self.first.state == self.second.state == RemoteSessionState.RUNNING
+        )
+        self.server.rooms.get(old_code).reconnect_timeout = 0.1
+        await asyncio.to_thread(self.first.close)
+        await self.wait_for(lambda: self.second.player_index is None)
+        self.assertFalse(self.second.round_started)
+        self.assertNotIn(old_code, self.server.rooms.rooms)
+        self.assertEqual(self.second.game.projectiles, [])
+        self.second.create_room()
+        await self.wait_for(lambda: bool(self.second.room_code))
+        self.assertEqual(self.second.player_index, 0)
+        connection = next(iter(self.server._connections.values()))
+        self.assertEqual(connection.room_code, self.second.room_code)
+
+    async def test_heartbeat_keeps_lobby_alive_without_keyboard_actions(self):
+        self.first.create_room()
+        await self.wait_for(lambda: bool(self.first.room_code))
+        room = self.server.rooms.get(self.first.room_code)
+        room.last_active_at = asyncio.get_running_loop().time() - 1000
+        # Invoke the handler before the next tick to isolate the heartbeat policy.
+        connection = next(value for value in self.server._connections.values()
+                          if value.room_code == room.room_code)
+        from network.protocol import encode_message
+        await self.server._handle_message(connection, encode_message("ping", {"time": 1.0}))
+        self.server._cleanup_rooms(asyncio.get_running_loop().time())
+        self.assertIn(room.room_code, self.server.rooms.rooms)
 
 
 if __name__ == "__main__":

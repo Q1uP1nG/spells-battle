@@ -75,6 +75,7 @@ class Room:
                 seat.disconnected_at = None
                 self.paused = any(value and not value.connected for value in self.seats)
                 self.last_active_at = float(now)
+                self._start_if_ready()
                 return seat
         raise RoomError("invalid_reconnect_token", "reconnect token is invalid")
 
@@ -101,11 +102,29 @@ class Room:
         seat = self._seat(player_index)
         seat.ready = bool(ready)
         self.last_active_at = float(now)
-        if all(value and value.ready and value.connected for value in self.seats):
+        self._start_if_ready()
+
+    def _start_if_ready(self):
+        if self.state == RoomState.READY_CHECK and all(
+            value and value.ready and value.connected for value in self.seats
+        ):
             self.session = AuthoritativeBattleSession(
                 self.match_id,
                 tuple(value.character_id for value in self.seats),
             )
+            self.state = RoomState.RUNNING
+            self.paused = False
+        elif self.state == RoomState.ROUND_OVER and all(
+            value and value.rematch_ready and value.connected for value in self.seats
+        ):
+            self.match_id = uuid.uuid4().hex
+            self.session = AuthoritativeBattleSession(
+                self.match_id, tuple(value.character_id for value in self.seats)
+            )
+            for value in self.seats:
+                value.rematch_ready = False
+                value.last_sequence = 0
+                value.cast_times.clear()
             self.state = RoomState.RUNNING
             self.paused = False
 
@@ -130,21 +149,7 @@ class Room:
         seat = self._seat(player_index)
         seat.rematch_ready = True
         self.last_active_at = float(now)
-        if all(value and value.rematch_ready and value.connected for value in self.seats):
-            self.match_id = uuid.uuid4().hex
-            self.session = AuthoritativeBattleSession(
-                self.match_id,
-                tuple(value.character_id for value in self.seats),
-            )
-            for value in self.seats:
-                value.rematch_ready = False
-                # Cast-sequence dedup is per match: the current client keeps a
-                # global counter, but a client that restarts its sequence for a
-                # new match must not be rejected as a duplicate.
-                value.last_sequence = 0
-                value.cast_times.clear()
-            self.state = RoomState.RUNNING
-            self.paused = False
+        self._start_if_ready()
 
     def step(self, dt):
         if self.state != RoomState.RUNNING or self.paused or self.session is None:

@@ -251,6 +251,8 @@ def main():
         # --- render -------------------------------------------------------
         if remote_session is not None:
             remote_session.update(now, dt)
+            if runner.mode == GameMode.REMOTE_DUEL and not remote_session.has_room_assignment:
+                runner = ModeRunner(GameMode.REMOTE_LOBBY)
             if runner.mode == GameMode.REMOTE_LOBBY and should_enter_remote_duel(
                 remote_session
             ):

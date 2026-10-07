@@ -50,7 +50,11 @@ class RoomManager:
     def cleanup(self, now):
         removed = []
         for code, room in tuple(self.rooms.items()):
-            if room.reconnect_expired(now) or now - room.last_active_at > self.room_idle_timeout:
+            idle = (
+                room.state != RoomState.RUNNING
+                and now - room.last_active_at > self.room_idle_timeout
+            )
+            if room.reconnect_expired(now) or idle:
                 room.state = RoomState.CLOSED
                 removed.append(code)
                 del self.rooms[code]

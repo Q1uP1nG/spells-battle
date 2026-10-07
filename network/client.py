@@ -55,6 +55,16 @@ class NetworkClient:
     def resume_sending(self):
         self._resume_sending.set()
 
+    def reset_room_commands(self):
+        """Discard commands for an expired room before allowing a new one."""
+        for outgoing in (self.priority_outgoing, self.outgoing):
+            while True:
+                try:
+                    outgoing.get_nowait()
+                except queue.Empty:
+                    break
+        self.resume_sending()
+
     def drain(self, limit=256):
         messages = []
         for _ in range(limit):

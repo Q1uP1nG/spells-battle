@@ -189,6 +189,7 @@ class RemoteBattleSession:
                 )
             elif transport_state == "CONNECTED":
                 self.client.resume_sending()
+                self.last_error = ""
                 self.status_message = "CONNECTED"
             elif transport_state in ("DISCONNECTED", "CLOSED"):
                 self.state = RemoteSessionState.DISCONNECTED
@@ -209,6 +210,8 @@ class RemoteBattleSession:
             if "reconnect_token" in payload:
                 self.reconnect_token = payload["reconnect_token"]
             self.client.resume_sending()
+            self.last_error = ""
+            self._requested_action = None
             self.state = RemoteSessionState.WAITING
             self.status_message = f"ROOM {self.room_code} - P{self.player_index + 1}"
             return
@@ -217,14 +220,14 @@ class RemoteBattleSession:
             return
         if message_type == "battle_snapshot":
             snapshot = snapshot_from_payload(payload)
-            if self.match_id and snapshot.match_id != self.match_id:
+            if not self.match_id or snapshot.match_id != self.match_id:
                 return
             if self.interpolator.push(snapshot, now):
                 self._apply_snapshot(snapshot, now)
             return
         if message_type == "battle_event":
             event = replace(event_from_payload(payload), match_time=float(now))
-            if self.match_id and event.match_id != self.match_id:
+            if not self.match_id or event.match_id != self.match_id:
                 return
             self.game._on_event(event)
             return
@@ -236,9 +239,32 @@ class RemoteBattleSession:
         if message_type == "error":
             self.last_error = payload.get("message", "server rejected request")
             self.status_message = payload.get("code", "ERROR").upper()
+            if self.has_room_assignment and payload.get("code") in (
+                "room_not_found", "reconnect_expired", "invalid_reconnect_token", "not_in_room"
+            ):
+                self._clear_room()
+
+    def _clear_room(self):
+        self.player_index = None
+        self.room_code = ""
+        self.match_id = ""
+        self.reconnect_token = ""
+        self.round_started = False
+        self._requested_action = None
+        self._next_sequence_value = 1
+        self.interpolator = SnapshotInterpolator()
+        self.game.reset()
+        self.client.reset_room_commands()
+        self.state = RemoteSessionState.WAITING
+        self.status_message = "ROOM CLOSED - CREATE OR JOIN"
 
     def _apply_room_state(self, payload):
         state = payload["state"]
+        if state == "CLOSED":
+            if payload["room_code"] == self.room_code:
+                self.last_error = "Room expired. Create or join a new room."
+                self._clear_room()
+            return
         self.room_code = payload["room_code"]
         incoming_match_id = payload["match_id"]
         if self.match_id and incoming_match_id != self.match_id:

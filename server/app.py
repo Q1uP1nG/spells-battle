@@ -292,6 +292,9 @@ class BattleServer:
                 return
 
             if message_type == "ping":
+                if connection.room_code is not None:
+                    room, _ = self._bound_room(connection)
+                    room.last_active_at = now
                 await connection.send("pong", {"echo": payload.get("time")}, request_id)
                 return
 
@@ -400,7 +403,7 @@ class BattleServer:
                         room.room_code, "battle_snapshot", snapshot_to_payload(room.snapshot())
                     )
                     self._broadcast_nowait(room.room_code, "room_state", room.public_state())
-            self.rooms.cleanup(now)
+            self._cleanup_rooms(now)
             tick_duration_ms = (perf_counter() - tick_started) * 1000.0
             self._tick_durations_ms.append(tick_duration_ms)
             self._tick_lags_ms.append(tick_lag_ms)
@@ -414,6 +417,16 @@ class BattleServer:
                     }
                 },
             )
+
+    def _cleanup_rooms(self, now):
+        existing = dict(self.rooms.rooms)
+        for room_code in self.rooms.cleanup(now):
+            room = existing[room_code]
+            self._broadcast_nowait(room_code, "room_state", room.public_state())
+            for connection in self._connections.values():
+                if connection.room_code == room_code:
+                    connection.room_code = None
+                    connection.player_index = None
 
     async def _broadcast_room_state(self, room):
         await self._broadcast(room.room_code, "room_state", room.public_state())

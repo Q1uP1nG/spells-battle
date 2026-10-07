@@ -6,6 +6,18 @@ from network.protocol import decode_message
 
 
 class NetworkClientQueueTests(unittest.IsolatedAsyncioTestCase):
+    async def test_expired_room_discards_commands_and_allows_new_room(self):
+        client = NetworkClient("ws://127.0.0.1:8765")
+        client._resume_sending.clear()
+        client.send("ready", {"ready": True, "match_id": "old"})
+        client.send_priority("reconnect", {"room_code": "ABC123", "reconnect_token": "old"})
+        client.reset_room_commands()
+        self.assertTrue(client.outgoing.empty())
+        self.assertTrue(client.priority_outgoing.empty())
+        self.assertTrue(client._resume_sending.is_set())
+        client.send("create_room", {})
+        self.assertEqual(client.outgoing.get_nowait()[0], "create_room")
+
     async def test_reconnect_is_sent_while_room_commands_wait_for_confirmation(self):
         client = NetworkClient("ws://127.0.0.1:8765")
         client._resume_sending.clear()
