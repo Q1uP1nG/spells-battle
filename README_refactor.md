@@ -1,5 +1,7 @@
 # Spells Refactor
 
+For download, dependency installation, and game controls, see [README.md](README.md).
+
 This folder is a side-by-side modular refactor of the original `magic_spale/spells_battle_mvp.py`.
 The original project folder is intentionally untouched.
 
